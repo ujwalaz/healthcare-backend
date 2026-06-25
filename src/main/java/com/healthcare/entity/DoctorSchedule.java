@@ -24,10 +24,12 @@ public class DoctorSchedule {
     @Column(name = "day_of_week", nullable = false)
     private Integer dayOfWeek;
 
-    @Column(name = "start_time", nullable = false, columnDefinition = "time")
+    @Convert(converter = com.healthcare.config.LocalTimeConverter.class)
+    @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
-    @Column(name = "end_time", nullable = false, columnDefinition = "time")
+    @Convert(converter = com.healthcare.config.LocalTimeConverter.class)
+    @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
     @Column(name = "slot_duration_minutes", nullable = false)
