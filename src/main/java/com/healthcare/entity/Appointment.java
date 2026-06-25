@@ -32,10 +32,12 @@ public class Appointment {
     @Column(name = "appointment_date", nullable = false)
     private LocalDate appointmentDate;
 
-    @Column(name = "start_time", nullable = false, columnDefinition = "time")
+    @Convert(converter = com.healthcare.config.LocalTimeConverter.class)
+    @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
-    @Column(name = "end_time", nullable = false, columnDefinition = "time")
+    @Convert(converter = com.healthcare.config.LocalTimeConverter.class)
+    @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
     @Column(name = "booked_by_role", nullable = false)
