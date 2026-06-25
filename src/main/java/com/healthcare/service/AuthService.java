@@ -75,7 +75,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse loginDoctor(DoctorLoginRequest request) {
-        Doctor doctor = doctorRepository.findByEmail(request.getEmail())
+        Doctor doctor = doctorRepository.findByPhone(request.getMobileNumber())
                 .orElseThrow(() -> new ResourceNotFoundException(MessageCode.DOCTOR_NOT_FOUND));
 
         if (!passwordEncoder.matches(request.getPassword(), doctor.getPasswordHash())) {
