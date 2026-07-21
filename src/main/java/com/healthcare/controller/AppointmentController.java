@@ -1,9 +1,7 @@
 package com.healthcare.controller;
 
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.ApiResponse;
-import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.appointment.*;
+import com.healthcare.dto.*;
 import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.AppointmentService;
