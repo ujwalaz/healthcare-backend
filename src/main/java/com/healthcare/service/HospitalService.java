@@ -2,9 +2,9 @@ package com.healthcare.service;
 
 import com.healthcare.constants.MessageCode;
 import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.doctor.DoctorSummaryResponse;
-import com.healthcare.dto.hospital.HospitalDetailResponse;
-import com.healthcare.dto.hospital.HospitalResponse;
+import com.healthcare.dto.DoctorSummaryResponse;
+import com.healthcare.dto.HospitalDetailResponse;
+import com.healthcare.dto.HospitalResponse;
 import com.healthcare.entity.Doctor;
 import com.healthcare.entity.Hospital;
 import com.healthcare.exception.ResourceNotFoundException;

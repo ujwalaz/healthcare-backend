@@ -2,9 +2,9 @@ package com.healthcare.service;
 
 import com.healthcare.constants.MessageCode;
 import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.pmr.PmrEntryRequest;
-import com.healthcare.dto.pmr.PmrEntryResponse;
-import com.healthcare.dto.pmr.PmrResponse;
+import com.healthcare.dto.PmrEntryRequest;
+import com.healthcare.dto.PmrEntryResponse;
+import com.healthcare.dto.PmrResponse;
 import com.healthcare.entity.Doctor;
 import com.healthcare.entity.Hospital;
 import com.healthcare.entity.Patient;

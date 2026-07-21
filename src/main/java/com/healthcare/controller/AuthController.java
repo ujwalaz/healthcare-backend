@@ -2,7 +2,7 @@ package com.healthcare.controller;
 
 import com.healthcare.constants.MessageCode;
 import com.healthcare.dto.ApiResponse;
-import com.healthcare.dto.auth.*;
+import com.healthcare.dto.*;
 import com.healthcare.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

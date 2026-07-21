@@ -1,7 +1,7 @@
 package com.healthcare.service;
 
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.auth.*;
+import com.healthcare.dto.*;
 import com.healthcare.entity.Patient;
 import com.healthcare.entity.Doctor;
 import com.healthcare.entity.AdminUser;

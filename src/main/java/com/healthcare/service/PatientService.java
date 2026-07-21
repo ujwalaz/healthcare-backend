@@ -2,9 +2,9 @@ package com.healthcare.service;
 
 import com.healthcare.constants.MessageCode;
 import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.patient.PatientResponse;
-import com.healthcare.dto.patient.PatientSummaryResponse;
-import com.healthcare.dto.patient.PatientUpdateRequest;
+import com.healthcare.dto.PatientResponse;
+import com.healthcare.dto.PatientSummaryResponse;
+import com.healthcare.dto.PatientUpdateRequest;
 import com.healthcare.entity.Patient;
 import com.healthcare.exception.ResourceNotFoundException;
 import com.healthcare.repository.PatientRepository;
