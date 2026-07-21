@@ -1,7 +1,7 @@
 package com.healthcare.service;
 
-import com.healthcare.constants.MessageCode;
 import com.healthcare.dto.*;
+import com.healthcare.constants.MessageCode;
 import com.healthcare.entity.Patient;
 import com.healthcare.entity.Doctor;
 import com.healthcare.entity.AdminUser;
@@ -17,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Date;
 import java.time.LocalDateTime;
 
 @Service
@@ -40,7 +41,7 @@ public class AuthService {
                 .name(request.getName())
                 .age(request.getAge())
                 .gender(request.getGender())
-                .dob(request.getDob())
+                .dob(request.getDob() != null ? Date.valueOf(request.getDob()) : null)
                 .mobileNumber(request.getMobileNumber())
                 .email(request.getEmail())
                 .createdAt(LocalDateTime.now())
@@ -50,12 +51,11 @@ public class AuthService {
         log.info("Registered new patient with id={}", patient.getId());
 
         String token = jwtUtil.generateToken(patient.getId(), "PATIENT", null);
-        return AuthResponse.builder()
+        return new AuthResponse()
                 .token(token)
                 .id(patient.getId())
                 .name(patient.getName())
-                .role("PATIENT")
-                .build();
+                .role(AuthResponse.RoleEnum.PATIENT);
     }
 
     @Transactional(readOnly = true)
@@ -65,12 +65,11 @@ public class AuthService {
 
         log.info("Patient login successful for id={}", patient.getId());
         String token = jwtUtil.generateToken(patient.getId(), "PATIENT", null);
-        return AuthResponse.builder()
+        return new AuthResponse()
                 .token(token)
                 .id(patient.getId())
                 .name(patient.getName())
-                .role("PATIENT")
-                .build();
+                .role(AuthResponse.RoleEnum.PATIENT);
     }
 
     @Transactional(readOnly = true)
@@ -88,13 +87,12 @@ public class AuthService {
 
         log.info("Doctor login successful for id={}", doctor.getId());
         String token = jwtUtil.generateToken(doctor.getId(), "DOCTOR", doctor.getHospitalId());
-        return AuthResponse.builder()
+        return new AuthResponse()
                 .token(token)
                 .id(doctor.getId())
                 .name(doctor.getName())
-                .role("DOCTOR")
-                .hospitalId(doctor.getHospitalId())
-                .build();
+                .role(AuthResponse.RoleEnum.DOCTOR)
+                .hospitalId(doctor.getHospitalId());
     }
 
     @Transactional(readOnly = true)
@@ -112,12 +110,11 @@ public class AuthService {
 
         log.info("Admin login successful for id={}", admin.getId());
         String token = jwtUtil.generateToken(admin.getId(), "ADMIN", admin.getHospitalId());
-        return AuthResponse.builder()
+        return new AuthResponse()
                 .token(token)
                 .id(admin.getId())
                 .name(admin.getName())
-                .role("ADMIN")
-                .hospitalId(admin.getHospitalId())
-                .build();
+                .role(AuthResponse.RoleEnum.ADMIN)
+                .hospitalId(admin.getHospitalId());
     }
 }
