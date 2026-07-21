@@ -3,7 +3,7 @@ package com.healthcare.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
+import java.sql.Date;
 import java.time.LocalDateTime;
 
 @Entity
@@ -29,7 +29,7 @@ public class PmrEntry {
     private Long appointmentId;
 
     @Column(name = "entry_date", nullable = false)
-    private LocalDate entryDate;
+    private Date entryDate;
 
     @Column(name = "diagnosis")
     private String diagnosis;
