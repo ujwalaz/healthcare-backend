@@ -136,8 +136,10 @@
                             <generatorName>spring</generatorName>
                             <output>${project.build.directory}/generated-sources/openapi</output>
                             <modelPackage>com.healthcare.dto</modelPackage>
+                            <generateModels>true</generateModels>
                             <generateApis>false</generateApis>
                             <generateSupportingFiles>false</generateSupportingFiles>
+                            <addCompileSourceRoot>true</addCompileSourceRoot>
                             <typeMappings>
                                 <typeMapping>time=LocalTime</typeMapping>
                             </typeMappings>
