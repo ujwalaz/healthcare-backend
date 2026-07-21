@@ -1,10 +1,7 @@
 package com.healthcare.service;
 
+import com.healthcare.dto.*;
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.PatientResponse;
-import com.healthcare.dto.PatientSummaryResponse;
-import com.healthcare.dto.PatientUpdateRequest;
 import com.healthcare.entity.Patient;
 import com.healthcare.exception.ResourceNotFoundException;
 import com.healthcare.repository.PatientRepository;
@@ -15,6 +12,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.sql.Date;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -40,7 +42,7 @@ public class PatientService {
             patient.setAge(request.getAge());
         }
         if (request.getDob() != null) {
-            patient.setDob(request.getDob());
+            patient.setDob(Date.valueOf(request.getDob()));
         }
         if (request.getEmail() != null) {
             patient.setEmail(request.getEmail());
@@ -71,25 +73,28 @@ public class PatientService {
     }
 
     private PatientResponse toResponse(Patient p) {
-        return PatientResponse.builder()
+        return new PatientResponse()
                 .id(p.getId())
                 .name(p.getName())
                 .age(p.getAge())
                 .gender(p.getGender())
-                .dob(p.getDob())
+                .dob(p.getDob() != null ? p.getDob().toLocalDate() : null)
                 .mobileNumber(p.getMobileNumber())
                 .email(p.getEmail())
-                .createdAt(p.getCreatedAt())
-                .build();
+                .createdAt(toOffsetDateTime(p.getCreatedAt()));
     }
 
     private PatientSummaryResponse toSummary(Patient p) {
-        return PatientSummaryResponse.builder()
+        return new PatientSummaryResponse()
                 .id(p.getId())
                 .name(p.getName())
                 .mobileNumber(p.getMobileNumber())
                 .age(p.getAge())
-                .gender(p.getGender())
-                .build();
+                .gender(p.getGender());
+    }
+
+
+    private OffsetDateTime toOffsetDateTime(LocalDateTime value) {
+        return value != null ? value.atZone(ZoneId.systemDefault()).toOffsetDateTime() : null;
     }
 }

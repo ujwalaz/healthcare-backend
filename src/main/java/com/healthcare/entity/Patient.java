@@ -3,7 +3,7 @@ package com.healthcare.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
+import java.sql.Date;
 import java.time.LocalDateTime;
 
 @Entity
@@ -29,7 +29,7 @@ public class Patient {
     private String gender;
 
     @Column(name = "dob")
-    private LocalDate dob;
+    private Date dob;
 
     @Column(name = "mobile_number", nullable = false)
     private String mobileNumber;

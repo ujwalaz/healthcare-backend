@@ -3,9 +3,9 @@ package com.healthcare.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
+import java.sql.Date;
+import java.sql.Time;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Entity
 @Table(name = "appointments")
@@ -30,15 +30,13 @@ public class Appointment {
     private Long hospitalId;
 
     @Column(name = "appointment_date", nullable = false)
-    private LocalDate appointmentDate;
+    private Date appointmentDate;
 
-    @Convert(converter = com.healthcare.config.LocalTimeConverter.class)
     @Column(name = "start_time", nullable = false)
-    private LocalTime startTime;
+    private Time startTime;
 
-    @Convert(converter = com.healthcare.config.LocalTimeConverter.class)
     @Column(name = "end_time", nullable = false)
-    private LocalTime endTime;
+    private Time endTime;
 
     @Column(name = "booked_by_role", nullable = false)
     private String bookedByRole;
