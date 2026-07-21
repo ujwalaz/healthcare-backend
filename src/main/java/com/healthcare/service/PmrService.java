@@ -1,10 +1,7 @@
 package com.healthcare.service;
 
+import com.healthcare.dto.*;
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.PmrEntryRequest;
-import com.healthcare.dto.PmrEntryResponse;
-import com.healthcare.dto.PmrResponse;
 import com.healthcare.entity.Doctor;
 import com.healthcare.entity.Hospital;
 import com.healthcare.entity.Patient;
@@ -27,7 +24,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Date;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -82,7 +82,7 @@ public class PmrService {
                 .pmrId(pmr.getId())
                 .doctorId(caller.userId())
                 .appointmentId(request.getAppointmentId())
-                .entryDate(request.getEntryDate())
+                .entryDate(request.getEntryDate() != null ? Date.valueOf(request.getEntryDate()) : null)
                 .diagnosis(request.getDiagnosis())
                 .symptoms(request.getSymptoms())
                 .treatmentPlan(request.getTreatmentPlan())
@@ -140,30 +140,33 @@ public class PmrService {
         Patient patient = patientRepository.findById(pmr.getPatientId()).orElse(null);
         Hospital hospital = hospitalRepository.findById(pmr.getHospitalId()).orElse(null);
 
-        return PmrResponse.builder()
+        return new PmrResponse()
                 .id(pmr.getId())
                 .patientId(pmr.getPatientId())
                 .patientName(patient != null ? patient.getName() : "Unknown")
                 .hospitalId(pmr.getHospitalId())
                 .hospitalName(hospital != null ? hospital.getName() : "Unknown")
-                .createdAt(pmr.getCreatedAt())
-                .updatedAt(pmr.getUpdatedAt())
-                .build();
+                .createdAt(toOffsetDateTime(pmr.getCreatedAt()))
+                .updatedAt(toOffsetDateTime(pmr.getUpdatedAt()));
     }
 
     private PmrEntryResponse toPmrEntryResponse(PmrEntry entry) {
         Doctor doctor = doctorRepository.findById(entry.getDoctorId()).orElse(null);
-        return PmrEntryResponse.builder()
+        return new PmrEntryResponse()
                 .id(entry.getId())
                 .doctorId(entry.getDoctorId())
                 .doctorName(doctor != null ? doctor.getName() : "Unknown")
                 .appointmentId(entry.getAppointmentId())
-                .entryDate(entry.getEntryDate())
+                .entryDate(entry.getEntryDate() != null ? entry.getEntryDate().toLocalDate() : null)
                 .diagnosis(entry.getDiagnosis())
                 .symptoms(entry.getSymptoms())
                 .treatmentPlan(entry.getTreatmentPlan())
                 .doctorNotes(entry.getDoctorNotes())
-                .createdAt(entry.getCreatedAt())
-                .build();
+                .createdAt(toOffsetDateTime(entry.getCreatedAt()));
+    }
+
+
+    private OffsetDateTime toOffsetDateTime(LocalDateTime value) {
+        return value != null ? value.atZone(ZoneId.systemDefault()).toOffsetDateTime() : null;
     }
 }

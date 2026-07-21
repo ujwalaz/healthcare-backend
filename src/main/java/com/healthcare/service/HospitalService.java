@@ -1,10 +1,7 @@
 package com.healthcare.service;
 
+import com.healthcare.dto.*;
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.DoctorSummaryResponse;
-import com.healthcare.dto.HospitalDetailResponse;
-import com.healthcare.dto.HospitalResponse;
 import com.healthcare.entity.Doctor;
 import com.healthcare.entity.Hospital;
 import com.healthcare.exception.ResourceNotFoundException;
@@ -46,35 +43,32 @@ public class HospitalService {
                 .map(this::toDoctorSummary)
                 .toList();
 
-        return HospitalDetailResponse.builder()
+        return new HospitalDetailResponse()
                 .id(hospital.getId())
                 .name(hospital.getName())
                 .address(hospital.getAddress())
                 .city(hospital.getCity())
                 .phone(hospital.getPhone())
                 .email(hospital.getEmail())
-                .doctors(doctorSummaries)
-                .build();
+                .doctors(doctorSummaries);
     }
 
     private HospitalResponse toResponse(Hospital h) {
-        return HospitalResponse.builder()
+        return new HospitalResponse()
                 .id(h.getId())
                 .name(h.getName())
                 .address(h.getAddress())
                 .city(h.getCity())
                 .phone(h.getPhone())
-                .email(h.getEmail())
-                .build();
+                .email(h.getEmail());
     }
 
     private DoctorSummaryResponse toDoctorSummary(Doctor d) {
-        return DoctorSummaryResponse.builder()
+        return new DoctorSummaryResponse()
                 .id(d.getId())
                 .name(d.getName())
                 .specialization(d.getSpecialization())
                 .education(d.getEducation())
-                .isActive(d.getIsActive())
-                .build();
+                .isActive(d.getIsActive());
     }
 }
