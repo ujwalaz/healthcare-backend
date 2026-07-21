@@ -1,11 +1,7 @@
 package com.healthcare.service;
 
+import com.healthcare.dto.*;
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.notification.MarkReadResponse;
-import com.healthcare.dto.notification.NotificationRequest;
-import com.healthcare.dto.notification.NotificationResponse;
-import com.healthcare.dto.notification.NotificationSentResponse;
 import com.healthcare.entity.Notification;
 import com.healthcare.exception.AppDeniedException;
 import com.healthcare.exception.ResourceNotFoundException;
@@ -19,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -32,13 +30,12 @@ public class NotificationService {
         Page<Notification> page = notificationRepository.findByRecipientWithReadFilter(
                 caller.role(), caller.userId(), isRead, pageable);
 
-        Page<NotificationResponse> responsePage = page.map(n -> NotificationResponse.builder()
+        Page<NotificationResponse> responsePage = page.map(n -> new NotificationResponse()
                 .id(n.getId())
                 .title(n.getTitle())
                 .message(n.getMessage())
                 .isRead(n.getIsRead())
-                .createdAt(n.getCreatedAt())
-                .build());
+                .createdAt(toOffsetDateTime(n.getCreatedAt())));
 
         return PagedResponse.from(responsePage);
     }
@@ -58,10 +55,9 @@ public class NotificationService {
         notificationRepository.save(notification);
         log.info("Notification id={} marked as read", notificationId);
 
-        return MarkReadResponse.builder()
+        return new MarkReadResponse()
                 .id(notification.getId())
-                .isRead(notification.getIsRead())
-                .build();
+                .isRead(notification.getIsRead());
     }
 
     @Transactional
@@ -83,13 +79,30 @@ public class NotificationService {
         notification = notificationRepository.save(notification);
         log.info("Notification created with id={} for recipientId={}", notification.getId(), request.getRecipientId());
 
-        return NotificationSentResponse.builder()
+        return new NotificationSentResponse()
                 .id(notification.getId())
                 .recipientUserType(notification.getRecipientUserType())
                 .recipientId(notification.getRecipientId())
                 .title(notification.getTitle())
                 .isRead(notification.getIsRead())
-                .createdAt(notification.getCreatedAt())
-                .build();
+                .createdAt(toOffsetDateTime(notification.getCreatedAt()));
+    }
+
+    @Transactional(readOnly = true)
+    public UnreadCountResponse getUnreadCount(JwtClaims caller) {
+        long count = notificationRepository.countByRecipientUserTypeAndRecipientIdAndIsRead(
+                caller.role(), caller.userId(), false);
+        log.info("Unread notification count={} for userId={}", count, caller.userId());
+        return new UnreadCountResponse().unreadCount((int) count);
+    }
+
+    @Transactional
+    public void markAllAsRead(JwtClaims caller) {
+        notificationRepository.markAllAsReadByRecipient(caller.role(), caller.userId());
+        log.info("All notifications marked as read for userId={}", caller.userId());
+    }
+
+    private OffsetDateTime toOffsetDateTime(LocalDateTime value) {
+        return value != null ? value.atZone(ZoneId.systemDefault()).toOffsetDateTime() : null;
     }
 }

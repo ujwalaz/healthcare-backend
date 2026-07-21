@@ -1,12 +1,7 @@
 package com.healthcare.controller;
 
+import com.healthcare.dto.*;
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.ApiResponse;
-import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.doctor.DoctorResponse;
-import com.healthcare.dto.doctor.DoctorSummaryResponse;
-import com.healthcare.dto.doctor.ScheduleRequest;
-import com.healthcare.dto.doctor.ScheduleResponse;
 import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.DoctorService;
@@ -14,9 +9,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -55,5 +52,15 @@ public class DoctorController {
         JwtClaims caller = SecurityUtils.getCurrentClaims();
         List<ScheduleResponse> response = doctorService.saveSchedule(id, requests, caller);
         return ResponseEntity.ok(ApiResponse.ok(MessageCode.DOCTOR_SCHEDULE_SAVED, response));
+    }
+
+    @GetMapping("/{id}/calendar")
+    public ResponseEntity<ApiResponse<List<CalendarDayResponse>>> getCalendar(
+            @PathVariable Long id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        JwtClaims caller = SecurityUtils.getCurrentClaims();
+        List<CalendarDayResponse> response = doctorService.getCalendar(id, from, to, caller);
+        return ResponseEntity.ok(ApiResponse.ok(MessageCode.DOCTOR_CALENDAR_FETCHED, response));
     }
 }

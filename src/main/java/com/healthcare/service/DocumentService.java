@@ -1,18 +1,17 @@
 package com.healthcare.service;
 
+import com.healthcare.dto.*;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.document.DocumentResponse;
-import com.healthcare.dto.document.DocumentSummaryResponse;
-import com.healthcare.dto.document.DownloadUrlResponse;
+import com.healthcare.entity.Appointment;
 import com.healthcare.entity.Document;
 import com.healthcare.exception.AppDeniedException;
 import com.healthcare.exception.ResourceNotFoundException;
+import com.healthcare.repository.AppointmentRepository;
 import com.healthcare.repository.DocumentRepository;
 import com.healthcare.security.JwtClaims;
 import lombok.RequiredArgsConstructor;
@@ -25,16 +24,20 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.List;
 import java.util.UUID;
 
-//@Service
+@Service
 @RequiredArgsConstructor
 @Slf4j
 public class DocumentService {
 
     private final DocumentRepository documentRepository;
+    private final AppointmentRepository appointmentRepository;
     private final BlobServiceClient blobServiceClient;
 
     @Value("${app.azure.storage.container-name}")
@@ -42,6 +45,12 @@ public class DocumentService {
 
     @Value("${app.azure.storage.sas-expiry-minutes}")
     private long sasExpiryMinutes;
+
+    @Value("${app.document.doctor-access.prior-minutes:30}")
+    private long priorMinutes;
+
+    @Value("${app.document.doctor-access.post-minutes:60}")
+    private long postMinutes;
 
     @Transactional
     public DocumentResponse upload(MultipartFile file, Long patientId, Long hospitalId,
@@ -110,6 +119,9 @@ public class DocumentService {
         } else if ("ADMIN".equals(caller.role())) {
             page = documentRepository.findByHospitalWithFilters(
                     caller.hospitalId(), patientId, documentType, appointmentId, pageable);
+        } else if ("DOCTOR".equals(caller.role())) {
+            verifyDoctorDocumentAccess(caller.userId(), patientId);
+            page = documentRepository.findPatientUploadedByPatient(patientId, documentType, pageable);
         } else {
             throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED);
         }
@@ -131,6 +143,8 @@ public class DocumentService {
             if (!document.getHospitalId().equals(caller.hospitalId())) {
                 throw new AppDeniedException(MessageCode.DOCUMENT_ACCESS_DENIED);
             }
+        } else if ("DOCTOR".equals(caller.role())) {
+            verifyDoctorDocumentAccess(caller.userId(), document.getPatientId());
         } else {
             throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED);
         }
@@ -145,10 +159,9 @@ public class DocumentService {
         String downloadUrl = blobClient.getBlobUrl() + "?" + sasToken;
 
         log.info("SAS URL generated for documentId={}", documentId);
-        return DownloadUrlResponse.builder()
-                .downloadUrl(downloadUrl)
-                .expiresAt(expiresAt)
-                .build();
+        return new DownloadUrlResponse()
+                .downloadUrl(URI.create(downloadUrl))
+                .expiresAt(expiresAt);
     }
 
     @Transactional
@@ -171,7 +184,7 @@ public class DocumentService {
     }
 
     private DocumentResponse toResponse(Document d) {
-        return DocumentResponse.builder()
+        return new DocumentResponse()
                 .id(d.getId())
                 .patientId(d.getPatientId())
                 .hospitalId(d.getHospitalId())
@@ -180,18 +193,39 @@ public class DocumentService {
                 .originalFileName(d.getOriginalFileName())
                 .uploadedByRole(d.getUploadedByRole())
                 .isVisibleToPatient(d.getIsVisibleToPatient())
-                .createdAt(d.getCreatedAt())
-                .build();
+                .createdAt(toOffsetDateTime(d.getCreatedAt()));
     }
 
     private DocumentSummaryResponse toSummaryResponse(Document d) {
-        return DocumentSummaryResponse.builder()
+        return new DocumentSummaryResponse()
                 .id(d.getId())
                 .documentType(d.getDocumentType())
                 .originalFileName(d.getOriginalFileName())
                 .uploadedByRole(d.getUploadedByRole())
                 .appointmentId(d.getAppointmentId())
-                .createdAt(d.getCreatedAt())
-                .build();
+                .createdAt(toOffsetDateTime(d.getCreatedAt()));
+    }
+
+
+    private OffsetDateTime toOffsetDateTime(LocalDateTime value) {
+        return value != null ? value.atZone(ZoneId.systemDefault()).toOffsetDateTime() : null;
+    }
+
+    private void verifyDoctorDocumentAccess(Long doctorId, Long patientId) {
+        LocalDateTime now = LocalDateTime.now();
+        List<Appointment> appointments = appointmentRepository.findActiveByDoctorIdAndPatientId(doctorId, patientId);
+        boolean hasAccess = appointments.stream().anyMatch(a -> {
+            LocalDateTime windowStart = LocalDateTime.of(
+                    a.getAppointmentDate().toLocalDate(), a.getStartTime().toLocalTime())
+                    .minusMinutes(priorMinutes);
+            LocalDateTime windowEnd = LocalDateTime.of(
+                    a.getAppointmentDate().toLocalDate(), a.getEndTime().toLocalTime())
+                    .plusMinutes(postMinutes);
+            return !now.isBefore(windowStart) && !now.isAfter(windowEnd);
+        });
+        if (!hasAccess) {
+            throw new AppDeniedException(MessageCode.DOCUMENT_ACCESS_DENIED,
+                    "Document access is only permitted within the appointment time window");
+        }
     }
 }

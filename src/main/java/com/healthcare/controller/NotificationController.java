@@ -1,12 +1,7 @@
 package com.healthcare.controller;
 
+import com.healthcare.dto.*;
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.ApiResponse;
-import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.notification.MarkReadResponse;
-import com.healthcare.dto.notification.NotificationRequest;
-import com.healthcare.dto.notification.NotificationResponse;
-import com.healthcare.dto.notification.NotificationSentResponse;
 import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.NotificationService;
@@ -51,5 +46,19 @@ public class NotificationController {
         NotificationSentResponse response = notificationService.createNotification(request, caller);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(MessageCode.NOTIFICATION_SENT, response));
+    }
+
+    @GetMapping("/unread-count")
+    public ResponseEntity<ApiResponse<UnreadCountResponse>> getUnreadCount() {
+        JwtClaims caller = SecurityUtils.getCurrentClaims();
+        UnreadCountResponse response = notificationService.getUnreadCount(caller);
+        return ResponseEntity.ok(ApiResponse.ok(MessageCode.NOTIFICATION_COUNT_FETCHED, response));
+    }
+
+    @PatchMapping("/read-all")
+    public ResponseEntity<ApiResponse<Void>> markAllAsRead() {
+        JwtClaims caller = SecurityUtils.getCurrentClaims();
+        notificationService.markAllAsRead(caller);
+        return ResponseEntity.ok(ApiResponse.ok(MessageCode.NOTIFICATION_ALL_MARKED_READ, null));
     }
 }

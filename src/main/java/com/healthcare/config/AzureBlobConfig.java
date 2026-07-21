@@ -12,7 +12,7 @@ public class AzureBlobConfig {
     @Value("${app.azure.storage.connection-string}")
     private String connectionString;
 
-   // @Bean
+   @Bean
     public BlobServiceClient blobServiceClient() {
         return new BlobServiceClientBuilder()
                 .connectionString(connectionString)

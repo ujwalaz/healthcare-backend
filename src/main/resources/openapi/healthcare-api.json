@@ -1,0 +1,1347 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Healthcare OPD Platform API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/documents/upload": {
+      "post": {
+        "tags": ["Documents"],
+        "summary": "Upload a document",
+        "description": "PATIENT may upload PREVIOUS_RECORD type only (for themselves). ADMIN may upload any type for their hospital.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file", "patientId", "hospitalId", "documentType"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "patientId": { "type": "integer", "format": "int64" },
+                  "hospitalId": { "type": "integer", "format": "int64" },
+                  "appointmentId": { "type": "integer", "format": "int64" },
+                  "documentType": { "type": "string", "enum": ["BILL","PRESCRIPTION","REPORT","DOCTOR_NOTE","PREVIOUS_RECORD"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document uploaded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DocumentResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/patient/{patientId}": {
+      "get": {
+        "tags": ["Documents"],
+        "summary": "List documents for a patient",
+        "description": "PATIENT sees own visible documents. ADMIN sees all for their hospital. DOCTOR sees patient-uploaded documents within the appointment time window.",
+        "parameters": [
+          { "name": "patientId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "documentType", "in": "query", "schema": { "type": "string" } },
+          { "name": "appointmentId", "in": "query", "schema": { "type": "integer", "format": "int64" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document list",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DocumentSummaryResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/download": {
+      "get": {
+        "tags": ["Documents"],
+        "summary": "Get a SAS download URL for a document",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "SAS download URL",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DownloadUrlResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}": {
+      "delete": {
+        "tags": ["Documents"],
+        "summary": "Soft-delete a document (ADMIN only)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": { "description": "Document removed" }
+        }
+      }
+    },
+    "/api/notifications/my": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get notifications for the current user",
+        "parameters": [
+          { "name": "isRead", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated notifications",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/unread-count": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get unread notification count for the current user",
+        "responses": {
+          "200": {
+            "description": "Unread count",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UnreadCountResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/read-all": {
+      "patch": {
+        "tags": ["Notifications"],
+        "summary": "Mark all notifications as read for the current user",
+        "responses": {
+          "200": { "description": "All notifications marked as read" }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "tags": ["Notifications"],
+        "summary": "Mark a single notification as read",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked read",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MarkReadResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Send a notification (ADMIN only)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NotificationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Notification sent",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationSentResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthResponse": {
+        "type": "object",
+        "description": "Authentication response containing the JWT and caller identity information.",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "JWT token issued after successful authentication.",
+            "example": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Authenticated user identifier.",
+            "example": 101
+          },
+          "name": {
+            "type": "string",
+            "description": "Authenticated user display name.",
+            "example": "Dr. Meera Shah"
+          },
+          "role": {
+            "type": "string",
+            "description": "Authenticated user role.",
+            "enum": [
+              "PATIENT",
+              "DOCTOR",
+              "ADMIN"
+            ],
+            "example": "DOCTOR"
+          },
+          "hospitalId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Hospital identifier for doctor and admin logins; null for patients.",
+            "example": 12
+          }
+        },
+        "required": [
+          "token",
+          "id",
+          "name",
+          "role"
+        ]
+      },
+      "PatientLoginRequest": {
+        "type": "object",
+        "description": "Request payload for patient login using a mobile number.",
+        "properties": {
+          "mobileNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{10}$",
+            "description": "Registered 10-digit mobile number.",
+            "example": "9876543210"
+          }
+        },
+        "required": [
+          "mobileNumber"
+        ]
+      },
+      "DoctorLoginRequest": {
+        "type": "object",
+        "description": "Request payload for doctor login using mobile number and password.",
+        "properties": {
+          "mobileNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{10}$",
+            "description": "Doctor's 10-digit mobile number.",
+            "example": "9988776655"
+          },
+          "password": {
+            "type": "string",
+            "description": "Doctor account password.",
+            "example": "StrongPassword@123"
+          }
+        },
+        "required": [
+          "mobileNumber",
+          "password"
+        ]
+      },
+      "AdminLoginRequest": {
+        "type": "object",
+        "description": "Request payload for admin login using mobile number and password.",
+        "properties": {
+          "mobileNumber": {
+            "type": "string",
+            "description": "Admin mobile number.",
+            "example": "9876501234"
+          },
+          "password": {
+            "type": "string",
+            "description": "Admin account password.",
+            "example": "AdminPassword@123"
+          }
+        },
+        "required": [
+          "mobileNumber",
+          "password"
+        ]
+      },
+      "PatientRegisterRequest": {
+        "type": "object",
+        "description": "Request payload to register a new patient.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Patient full name.",
+            "example": "Asha Patil"
+          },
+          "age": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Patient age in years.",
+            "example": 34
+          },
+          "gender": {
+            "type": "string",
+            "description": "Patient gender.",
+            "example": "FEMALE"
+          },
+          "dob": {
+            "type": "string",
+            "format": "date",
+            "description": "Patient date of birth.",
+            "example": "1992-08-15"
+          },
+          "mobileNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{10}$",
+            "description": "Patient 10-digit mobile number.",
+            "example": "9876543210"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Patient email address.",
+            "example": "asha.patil@example.com"
+          }
+        },
+        "required": [
+          "name",
+          "age",
+          "gender",
+          "mobileNumber"
+        ]
+      },
+      "AppointmentRequest": {
+        "type": "object",
+        "description": "Request payload to book an appointment.",
+        "properties": {
+          "patientId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Patient identifier. Optional for patient self-booking because it is resolved from the JWT.",
+            "example": 201
+          },
+          "doctorId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Doctor identifier.",
+            "example": 301
+          },
+          "hospitalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Hospital identifier.",
+            "example": 12
+          },
+          "appointmentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Appointment date.",
+            "example": "2026-07-01"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Appointment slot start time in local time.",
+            "example": "10:30:00"
+          },
+          "isOffline": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the appointment is booked for an offline visit.",
+            "example": false
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional booking notes.",
+            "example": "Follow-up visit for migraine symptoms"
+          }
+        },
+        "required": [
+          "doctorId",
+          "hospitalId",
+          "appointmentDate",
+          "startTime"
+        ]
+      },
+      "AppointmentResponse": {
+        "type": "object",
+        "description": "Detailed appointment response.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Appointment identifier.",
+            "example": 501
+          },
+          "patientId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Patient identifier.",
+            "example": 201
+          },
+          "patientName": {
+            "type": "string",
+            "description": "Patient name.",
+            "example": "Asha Patil"
+          },
+          "doctorId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Doctor identifier.",
+            "example": 301
+          },
+          "doctorName": {
+            "type": "string",
+            "description": "Doctor name.",
+            "example": "Dr. Meera Shah"
+          },
+          "hospitalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Hospital identifier.",
+            "example": 12
+          },
+          "hospitalName": {
+            "type": "string",
+            "description": "Hospital name.",
+            "example": "Sunrise Care Hospital"
+          },
+          "appointmentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Appointment date.",
+            "example": "2026-07-01"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Appointment start time.",
+            "example": "10:30:00"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Appointment end time.",
+            "example": "10:45:00"
+          },
+          "status": {
+            "type": "string",
+            "description": "Current appointment status.",
+            "example": "SCHEDULED"
+          },
+          "isOffline": {
+            "type": "boolean",
+            "description": "Whether the appointment is offline.",
+            "example": false
+          },
+          "notes": {
+            "type": "string",
+            "description": "Appointment notes.",
+            "example": "Follow-up visit for migraine symptoms"
+          },
+          "bookedByRole": {
+            "type": "string",
+            "description": "Role that booked the appointment.",
+            "example": "PATIENT"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the appointment was created.",
+            "example": "2026-06-27T11:30:00Z"
+          }
+        }
+      },
+      "AppointmentSummaryResponse": {
+        "type": "object",
+        "description": "Compact appointment summary for list screens.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Appointment identifier.",
+            "example": 501
+          },
+          "patientName": {
+            "type": "string",
+            "description": "Patient name.",
+            "example": "Asha Patil"
+          },
+          "doctorName": {
+            "type": "string",
+            "description": "Doctor name.",
+            "example": "Dr. Meera Shah"
+          },
+          "appointmentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Appointment date.",
+            "example": "2026-07-01"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Appointment start time.",
+            "example": "10:30:00"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Appointment end time.",
+            "example": "10:45:00"
+          },
+          "status": {
+            "type": "string",
+            "description": "Appointment status.",
+            "example": "SCHEDULED"
+          },
+          "isOffline": {
+            "type": "boolean",
+            "description": "Whether the appointment is offline.",
+            "example": false
+          }
+        }
+      },
+      "SlotResponse": {
+        "type": "object",
+        "description": "Available appointment slot window.",
+        "properties": {
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Slot start time.",
+            "example": "10:30:00"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Slot end time.",
+            "example": "10:45:00"
+          }
+        }
+      },
+      "StatusUpdateRequest": {
+        "type": "object",
+        "description": "Request payload to update an appointment status.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "New appointment status.",
+            "example": "CANCELLED"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional status update notes.",
+            "example": "Patient requested cancellation"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "PmrEntryRequest": {
+        "type": "object",
+        "description": "Request payload to add a PMR entry.",
+        "properties": {
+          "appointmentId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Linked appointment identifier.",
+            "example": 501
+          },
+          "entryDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of the PMR entry.",
+            "example": "2026-07-01"
+          },
+          "diagnosis": {
+            "type": "string",
+            "description": "Diagnosis notes.",
+            "example": "Migraine without aura"
+          },
+          "symptoms": {
+            "type": "string",
+            "description": "Observed symptoms.",
+            "example": "Headache, nausea"
+          },
+          "treatmentPlan": {
+            "type": "string",
+            "description": "Treatment plan recommended by the doctor.",
+            "example": "Prescribe triptans and hydration"
+          },
+          "doctorNotes": {
+            "type": "string",
+            "description": "Additional doctor notes.",
+            "example": "Review after two weeks"
+          }
+        },
+        "required": [
+          "appointmentId",
+          "entryDate"
+        ]
+      },
+      "PmrEntryResponse": {
+        "type": "object",
+        "description": "PMR entry details.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "PMR entry identifier.",
+            "example": 801
+          },
+          "doctorId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Doctor identifier.",
+            "example": 301
+          },
+          "doctorName": {
+            "type": "string",
+            "description": "Doctor name.",
+            "example": "Dr. Meera Shah"
+          },
+          "appointmentId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Linked appointment identifier.",
+            "example": 501
+          },
+          "entryDate": {
+            "type": "string",
+            "format": "date",
+            "description": "PMR entry date.",
+            "example": "2026-07-01"
+          },
+          "diagnosis": {
+            "type": "string",
+            "description": "Diagnosis details.",
+            "example": "Migraine without aura"
+          },
+          "symptoms": {
+            "type": "string",
+            "description": "Symptoms recorded in the PMR.",
+            "example": "Headache, nausea"
+          },
+          "treatmentPlan": {
+            "type": "string",
+            "description": "Treatment plan.",
+            "example": "Prescribe triptans and hydration"
+          },
+          "doctorNotes": {
+            "type": "string",
+            "description": "Doctor notes.",
+            "example": "Review after two weeks"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the PMR entry was created.",
+            "example": "2026-07-01T09:45:00Z"
+          }
+        }
+      },
+      "PmrResponse": {
+        "type": "object",
+        "description": "Patient medical record summary.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "PMR identifier.",
+            "example": 701
+          },
+          "patientId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Patient identifier.",
+            "example": 201
+          },
+          "patientName": {
+            "type": "string",
+            "description": "Patient name.",
+            "example": "Asha Patil"
+          },
+          "hospitalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Hospital identifier.",
+            "example": 12
+          },
+          "hospitalName": {
+            "type": "string",
+            "description": "Hospital name.",
+            "example": "Sunrise Care Hospital"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the PMR was created.",
+            "example": "2026-06-01T08:00:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the PMR was last updated.",
+            "example": "2026-07-01T09:45:00Z"
+          }
+        }
+      },
+      "HospitalResponse": {
+        "type": "object",
+        "description": "Hospital summary response.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Hospital identifier.",
+            "example": 12
+          },
+          "name": {
+            "type": "string",
+            "description": "Hospital name.",
+            "example": "Sunrise Care Hospital"
+          },
+          "address": {
+            "type": "string",
+            "description": "Hospital street address.",
+            "example": "12 MG Road"
+          },
+          "city": {
+            "type": "string",
+            "description": "Hospital city.",
+            "example": "Pune"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Hospital contact number.",
+            "example": "02012345678"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Hospital contact email.",
+            "example": "contact@sunrisecare.com"
+          }
+        }
+      },
+      "HospitalDetailResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HospitalResponse"
+          },
+          {
+            "type": "object",
+            "description": "Hospital detail including active doctors.",
+            "properties": {
+              "doctors": {
+                "type": "array",
+                "description": "Active doctors available at the hospital.",
+                "items": {
+                  "$ref": "#/components/schemas/DoctorSummaryResponse"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DoctorResponse": {
+        "type": "object",
+        "description": "Doctor detail response.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Doctor identifier.",
+            "example": 301
+          },
+          "name": {
+            "type": "string",
+            "description": "Doctor name.",
+            "example": "Dr. Meera Shah"
+          },
+          "specialization": {
+            "type": "string",
+            "description": "Doctor specialization.",
+            "example": "Neurology"
+          },
+          "education": {
+            "type": "string",
+            "description": "Doctor educational qualification.",
+            "example": "MD, DM Neurology"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Doctor mobile number.",
+            "example": "9988776655"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Doctor email address.",
+            "example": "meera.shah@example.com"
+          },
+          "hospitalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Hospital identifier.",
+            "example": 12
+          },
+          "hospitalName": {
+            "type": "string",
+            "description": "Hospital name.",
+            "example": "Sunrise Care Hospital"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether the doctor account is active.",
+            "example": true
+          }
+        }
+      },
+      "DoctorSummaryResponse": {
+        "type": "object",
+        "description": "Compact doctor summary.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Doctor identifier.",
+            "example": 301
+          },
+          "name": {
+            "type": "string",
+            "description": "Doctor name.",
+            "example": "Dr. Meera Shah"
+          },
+          "specialization": {
+            "type": "string",
+            "description": "Doctor specialization.",
+            "example": "Neurology"
+          },
+          "education": {
+            "type": "string",
+            "description": "Doctor educational qualification.",
+            "example": "MD, DM Neurology"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether the doctor account is active.",
+            "example": true
+          }
+        }
+      },
+      "CalendarDayResponse": {
+        "type": "object",
+        "description": "Slot availability summary for a single calendar day.",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "The calendar date.",
+            "example": "2026-07-22"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["NO_SCHEDULE", "AVAILABLE", "FULL"],
+            "description": "Availability status for the day.",
+            "example": "AVAILABLE"
+          },
+          "totalSlots": {
+            "type": "integer",
+            "description": "Total slots configured for the day.",
+            "example": 14
+          },
+          "bookedSlots": {
+            "type": "integer",
+            "description": "Number of booked (non-cancelled) appointments.",
+            "example": 6
+          },
+          "availableSlots": {
+            "type": "integer",
+            "description": "Remaining open slots.",
+            "example": 8
+          }
+        }
+      },
+      "ScheduleRequest": {
+        "type": "object",
+        "description": "Request payload to save a doctor's weekly schedule.",
+        "properties": {
+          "dayOfWeek": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 6,
+            "description": "Day of week index where 0 is Monday and 6 is Sunday.",
+            "example": 0
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Schedule start time.",
+            "example": "09:00:00"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Schedule end time.",
+            "example": "13:00:00"
+          },
+          "slotDurationMinutes": {
+            "type": "integer",
+            "minimum": 5,
+            "description": "Duration of each slot in minutes.",
+            "example": 15
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": ["MORNING", "EVENING"],
+            "description": "Session type: MORNING or EVENING.",
+            "example": "MORNING"
+          }
+        },
+        "required": [
+          "dayOfWeek",
+          "startTime",
+          "endTime",
+          "slotDurationMinutes",
+          "sessionType"
+        ]
+      },
+      "ScheduleResponse": {
+        "type": "object",
+        "description": "Doctor schedule entry response.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Schedule identifier.",
+            "example": 901
+          },
+          "dayOfWeek": {
+            "type": "integer",
+            "description": "Day of week index where 0 is Monday and 6 is Sunday.",
+            "example": 0
+          },
+          "dayLabel": {
+            "type": "string",
+            "description": "Human-readable day label.",
+            "example": "Monday"
+          },
+          "startTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Schedule start time.",
+            "example": "09:00:00"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "time",
+            "description": "Schedule end time.",
+            "example": "13:00:00"
+          },
+          "slotDurationMinutes": {
+            "type": "integer",
+            "description": "Duration of each slot in minutes.",
+            "example": 15
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": ["MORNING", "EVENING"],
+            "description": "Session type: MORNING or EVENING.",
+            "example": "MORNING"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "Whether the schedule entry is active.",
+            "example": true
+          }
+        }
+      },
+      "PatientResponse": {
+        "type": "object",
+        "description": "Patient detail response.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Patient identifier.",
+            "example": 201
+          },
+          "name": {
+            "type": "string",
+            "description": "Patient name.",
+            "example": "Asha Patil"
+          },
+          "age": {
+            "type": "integer",
+            "description": "Patient age.",
+            "example": 34
+          },
+          "gender": {
+            "type": "string",
+            "description": "Patient gender.",
+            "example": "FEMALE"
+          },
+          "dob": {
+            "type": "string",
+            "format": "date",
+            "description": "Patient date of birth.",
+            "example": "1992-08-15"
+          },
+          "mobileNumber": {
+            "type": "string",
+            "description": "Patient mobile number.",
+            "example": "9876543210"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Patient email address.",
+            "example": "asha.patil@example.com"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the patient was created.",
+            "example": "2026-06-27T11:30:00Z"
+          }
+        }
+      },
+      "PatientUpdateRequest": {
+        "type": "object",
+        "description": "Request payload to update patient profile details.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Updated patient name.",
+            "example": "Asha P. Patil"
+          },
+          "age": {
+            "type": "integer",
+            "description": "Updated patient age.",
+            "example": 35
+          },
+          "dob": {
+            "type": "string",
+            "format": "date",
+            "description": "Updated patient date of birth.",
+            "example": "1991-08-15"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Updated patient email address.",
+            "example": "asha.new@example.com"
+          }
+        }
+      },
+      "PatientSummaryResponse": {
+        "type": "object",
+        "description": "Compact patient summary.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Patient identifier.",
+            "example": 201
+          },
+          "name": {
+            "type": "string",
+            "description": "Patient name.",
+            "example": "Asha Patil"
+          },
+          "mobileNumber": {
+            "type": "string",
+            "description": "Patient mobile number.",
+            "example": "9876543210"
+          },
+          "age": {
+            "type": "integer",
+            "description": "Patient age.",
+            "example": 34
+          },
+          "gender": {
+            "type": "string",
+            "description": "Patient gender.",
+            "example": "FEMALE"
+          }
+        }
+      },
+      "DocumentResponse": {
+        "type": "object",
+        "description": "Detailed uploaded document response.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Document identifier.",
+            "example": 1001
+          },
+          "patientId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Patient identifier.",
+            "example": 201
+          },
+          "hospitalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Hospital identifier.",
+            "example": 12
+          },
+          "appointmentId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Related appointment identifier when applicable.",
+            "example": 501
+          },
+          "documentType": {
+            "type": "string",
+            "description": "Document classification.",
+            "example": "PREVIOUS_RECORD"
+          },
+          "originalFileName": {
+            "type": "string",
+            "description": "Original uploaded file name.",
+            "example": "blood-report.pdf"
+          },
+          "uploadedByRole": {
+            "type": "string",
+            "description": "Role that uploaded the document.",
+            "example": "PATIENT"
+          },
+          "isVisibleToPatient": {
+            "type": "boolean",
+            "description": "Whether the patient can view the document.",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the document was created.",
+            "example": "2026-06-27T11:30:00Z"
+          }
+        }
+      },
+      "DocumentSummaryResponse": {
+        "type": "object",
+        "description": "Compact document summary.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Document identifier.",
+            "example": 1001
+          },
+          "documentType": {
+            "type": "string",
+            "description": "Document classification.",
+            "example": "PREVIOUS_RECORD"
+          },
+          "originalFileName": {
+            "type": "string",
+            "description": "Original uploaded file name.",
+            "example": "blood-report.pdf"
+          },
+          "uploadedByRole": {
+            "type": "string",
+            "description": "Role that uploaded the document.",
+            "example": "PATIENT"
+          },
+          "appointmentId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Related appointment identifier when applicable.",
+            "example": 501
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the document was created.",
+            "example": "2026-06-27T11:30:00Z"
+          }
+        }
+      },
+      "DownloadUrlResponse": {
+        "type": "object",
+        "description": "Time-limited download URL for a document.",
+        "properties": {
+          "downloadUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "SAS URL for downloading the document.",
+            "example": "https://storage.example.com/container/blob.pdf?sv=..."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Offset timestamp when the URL expires.",
+            "example": "2026-06-27T12:30:00+05:30"
+          }
+        }
+      },
+      "NotificationRequest": {
+        "type": "object",
+        "description": "Request payload to create a notification.",
+        "properties": {
+          "recipientUserType": {
+            "type": "string",
+            "description": "Recipient role or user type.",
+            "example": "PATIENT"
+          },
+          "recipientId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Recipient user identifier.",
+            "example": 201
+          },
+          "title": {
+            "type": "string",
+            "description": "Notification title.",
+            "example": "Appointment Reminder"
+          },
+          "message": {
+            "type": "string",
+            "description": "Notification message body.",
+            "example": "Your appointment is scheduled for tomorrow at 10:30 AM."
+          }
+        },
+        "required": [
+          "recipientUserType",
+          "recipientId",
+          "title",
+          "message"
+        ]
+      },
+      "NotificationResponse": {
+        "type": "object",
+        "description": "Notification response for the recipient inbox.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Notification identifier.",
+            "example": 1101
+          },
+          "title": {
+            "type": "string",
+            "description": "Notification title.",
+            "example": "Appointment Reminder"
+          },
+          "message": {
+            "type": "string",
+            "description": "Notification message body.",
+            "example": "Your appointment is scheduled for tomorrow at 10:30 AM."
+          },
+          "isRead": {
+            "type": "boolean",
+            "description": "Whether the notification has been read.",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the notification was created.",
+            "example": "2026-06-27T11:30:00Z"
+          }
+        }
+      },
+      "NotificationSentResponse": {
+        "type": "object",
+        "description": "Response after a notification is created.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Notification identifier.",
+            "example": 1101
+          },
+          "recipientUserType": {
+            "type": "string",
+            "description": "Recipient role or user type.",
+            "example": "PATIENT"
+          },
+          "recipientId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Recipient user identifier.",
+            "example": 201
+          },
+          "title": {
+            "type": "string",
+            "description": "Notification title.",
+            "example": "Appointment Reminder"
+          },
+          "isRead": {
+            "type": "boolean",
+            "description": "Whether the notification has been read.",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the notification was created.",
+            "example": "2026-06-27T11:30:00Z"
+          }
+        }
+      },
+      "MarkReadResponse": {
+        "type": "object",
+        "description": "Response confirming a notification read-state update.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Notification identifier.",
+            "example": 1101
+          },
+          "isRead": {
+            "type": "boolean",
+            "description": "Updated read status.",
+            "example": true
+          }
+        }
+      },
+      "UnreadCountResponse": {
+        "type": "object",
+        "description": "Response containing the count of unread notifications for the caller.",
+        "properties": {
+          "unreadCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of unread notifications.",
+            "example": 5
+          }
+        }
+      }
+    }
+  }
+}

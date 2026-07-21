@@ -1,11 +1,7 @@
 package com.healthcare.controller;
 
+import com.healthcare.dto.*;
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.ApiResponse;
-import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.document.DocumentResponse;
-import com.healthcare.dto.document.DocumentSummaryResponse;
-import com.healthcare.dto.document.DownloadUrlResponse;
 import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.DocumentService;
@@ -17,11 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-//@RestController
-//@RequestMapping("/api/documents")
+@RestController
+@RequestMapping("/api/documents")
 @RequiredArgsConstructor
 public class DocumentController {
-
     private final DocumentService documentService;
 
     @PostMapping("/upload")

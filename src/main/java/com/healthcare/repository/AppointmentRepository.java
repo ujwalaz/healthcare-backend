@@ -8,14 +8,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.sql.Date;
+import java.sql.Time;
 import java.util.List;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    List<Appointment> findByDoctorIdAndAppointmentDate(Long doctorId, LocalDate date);
+    int countByDoctorIdAndAppointmentDateAndStatusNot(Long doctorId, Date date, String status);
+
+    List<Appointment> findByDoctorIdAndAppointmentDate(Long doctorId, Date date);
 
     Page<Appointment> findByPatientId(Long patientId, Pageable pageable);
 
@@ -23,7 +25,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     Page<Appointment> findByHospitalId(Long hospitalId, Pageable pageable);
 
-    boolean existsByDoctorIdAndAppointmentDateAndStartTime(Long doctorId, LocalDate date, LocalTime startTime);
+    boolean existsByDoctorIdAndAppointmentDateAndStartTime(Long doctorId, Date date, Time startTime);
 
     @Query("SELECT a FROM Appointment a WHERE " +
            "(:patientId IS NULL OR a.patientId = :patientId) AND " +
@@ -36,6 +38,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             @Param("doctorId") Long doctorId,
             @Param("hospitalId") Long hospitalId,
             @Param("status") String status,
-            @Param("date") LocalDate date,
+            @Param("date") Date date,
             Pageable pageable);
+
+    @Query("SELECT a FROM Appointment a WHERE a.doctorId = :doctorId AND a.patientId = :patientId " +
+           "AND a.status IN ('SCHEDULED', 'COMPLETED')")
+    List<Appointment> findActiveByDoctorIdAndPatientId(
+            @Param("doctorId") Long doctorId,
+            @Param("patientId") Long patientId);
 }

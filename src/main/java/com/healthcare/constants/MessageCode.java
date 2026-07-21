@@ -34,6 +34,7 @@ public enum MessageCode {
     DOCTOR_NOT_FOUND("DOCTOR_NOT_FOUND", "Doctor not found"),
     DOCTOR_SCHEDULE_FETCHED("DOCTOR_SCHEDULE_FETCHED", "Doctor schedule fetched successfully"),
     DOCTOR_SCHEDULE_SAVED("DOCTOR_SCHEDULE_SAVED", "Doctor schedule saved successfully"),
+    DOCTOR_CALENDAR_FETCHED("DOCTOR_CALENDAR_FETCHED", "Doctor calendar fetched successfully"),
 
     // Appointment
     APPOINTMENT_BOOKED("APPOINTMENT_BOOKED", "Appointment booked successfully"),
@@ -64,7 +65,9 @@ public enum MessageCode {
     NOTIFICATION_SENT("NOTIFICATION_SENT", "Notification sent successfully"),
     NOTIFICATION_FETCHED("NOTIFICATION_FETCHED", "Notifications fetched successfully"),
     NOTIFICATION_MARKED_READ("NOTIFICATION_MARKED_READ", "Notification marked as read"),
-    NOTIFICATION_NOT_FOUND("NOTIFICATION_NOT_FOUND", "Notification not found");
+    NOTIFICATION_NOT_FOUND("NOTIFICATION_NOT_FOUND", "Notification not found"),
+    NOTIFICATION_COUNT_FETCHED("NOTIFICATION_COUNT_FETCHED", "Unread notification count fetched"),
+    NOTIFICATION_ALL_MARKED_READ("NOTIFICATION_ALL_MARKED_READ", "All notifications marked as read");
 
     private final String code;
     private final String defaultMessage;

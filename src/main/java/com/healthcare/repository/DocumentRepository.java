@@ -34,4 +34,11 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
             @Param("documentType") String documentType,
             @Param("appointmentId") Long appointmentId,
             Pageable pageable);
+
+    @Query("SELECT d FROM Document d WHERE d.patientId = :patientId AND d.uploadedByRole = 'PATIENT' " +
+           "AND (:documentType IS NULL OR d.documentType = :documentType)")
+    Page<Document> findPatientUploadedByPatient(
+            @Param("patientId") Long patientId,
+            @Param("documentType") String documentType,
+            Pageable pageable);
 }

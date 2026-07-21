@@ -1,9 +1,9 @@
 package com.healthcare.service;
 
+import com.healthcare.dto.*;
 import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.PagedResponse;
-import com.healthcare.dto.appointment.*;
 import com.healthcare.entity.*;
+import com.healthcare.event.AppointmentEvent;
 import com.healthcare.exception.AppDeniedException;
 import com.healthcare.exception.ConflictException;
 import com.healthcare.exception.ResourceNotFoundException;
@@ -11,17 +11,23 @@ import com.healthcare.repository.*;
 import com.healthcare.security.JwtClaims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
+import java.sql.Date;
+import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -39,6 +45,10 @@ public class AppointmentService {
     private final PatientHospitalLinkRepository patientHospitalLinkRepository;
     private final PatientMedicalRecordRepository patientMedicalRecordRepository;
     private final DoctorPmrAccessLogRepository doctorPmrAccessLogRepository;
+    private final ApplicationEventPublisher eventPublisher;
+
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd MMM yyyy");
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
     @Transactional(readOnly = true)
     public List<SlotResponse> getAvailableSlots(Long doctorId, LocalDate date) {
@@ -47,28 +57,34 @@ public class AppointmentService {
         }
 
         int dayOfWeekIndex = date.getDayOfWeek().getValue() - 1; // 0=Mon..6=Sun
-        DoctorSchedule schedule = scheduleRepository.findByDoctorIdAndDayOfWeek(doctorId, dayOfWeekIndex)
-                .filter(s -> Boolean.TRUE.equals(s.getIsActive()))
-                .orElse(null);
+        List<DoctorSchedule> sessions = scheduleRepository
+                .findByDoctorIdAndDayOfWeekAndIsActiveTrue(doctorId, dayOfWeekIndex);
 
-        if (schedule == null) {
+        if (sessions.isEmpty()) {
             return List.of();
         }
 
-        List<Appointment> booked = appointmentRepository.findByDoctorIdAndAppointmentDate(doctorId, date);
+        List<Appointment> booked = appointmentRepository.findByDoctorIdAndAppointmentDate(doctorId, Date.valueOf(date));
         Set<LocalTime> bookedTimes = booked.stream()
-                .map(Appointment::getStartTime)
+                .map(a -> a.getStartTime().toLocalTime())
                 .collect(Collectors.toSet());
 
         List<SlotResponse> slots = new ArrayList<>();
-        LocalTime current = schedule.getStartTime();
-        while (current.plusMinutes(schedule.getSlotDurationMinutes()).compareTo(schedule.getEndTime()) <= 0) {
-            if (!bookedTimes.contains(current)) {
-                slots.add(new SlotResponse(current, current.plusMinutes(schedule.getSlotDurationMinutes())));
+        for (DoctorSchedule session : sessions) {
+            LocalTime current = session.getStartTime().toLocalTime();
+            LocalTime end     = session.getEndTime().toLocalTime();
+            int slotMins = session.getSlotDurationMinutes();
+            while (!current.plusMinutes(slotMins).isAfter(end)) {
+                if (!bookedTimes.contains(current)) {
+                    slots.add(new SlotResponse()
+                            .startTime(current)
+                            .endTime(current.plusMinutes(slotMins)));
+                }
+                current = current.plusMinutes(slotMins);
             }
-            current = current.plusMinutes(schedule.getSlotDurationMinutes());
         }
 
+        slots.sort(Comparator.comparing(SlotResponse::getStartTime));
         log.info("Found {} available slots for doctorId={} on date={}", slots.size(), doctorId, date);
         return slots;
     }
@@ -99,21 +115,23 @@ public class AppointmentService {
                 .orElseThrow(() -> new ResourceNotFoundException(MessageCode.HOSPITAL_NOT_FOUND));
 
         int dayOfWeekIndex = req.getAppointmentDate().getDayOfWeek().getValue() - 1;
-        DoctorSchedule schedule = scheduleRepository
-                .findByDoctorIdAndDayOfWeek(req.getDoctorId(), dayOfWeekIndex)
-                .filter(s -> Boolean.TRUE.equals(s.getIsActive()))
-                .orElseThrow(() -> new ConflictException(MessageCode.APPOINTMENT_SLOT_INVALID,
-                        "No active schedule for this doctor on the requested day"));
-
-        LocalTime endTime = req.getStartTime().plusMinutes(schedule.getSlotDurationMinutes());
-        boolean validSlot = isValidSlot(req.getStartTime(), schedule);
-        if (!validSlot) {
+        List<DoctorSchedule> sessions = scheduleRepository
+                .findByDoctorIdAndDayOfWeekAndIsActiveTrue(req.getDoctorId(), dayOfWeekIndex);
+        if (sessions.isEmpty()) {
             throw new ConflictException(MessageCode.APPOINTMENT_SLOT_INVALID,
-                    "The requested start time does not align with the doctor's schedule slots");
+                    "No active schedule for this doctor on the requested day");
         }
 
+        DoctorSchedule schedule = sessions.stream()
+                .filter(s -> isValidSlot(req.getStartTime(), s))
+                .findFirst()
+                .orElseThrow(() -> new ConflictException(MessageCode.APPOINTMENT_SLOT_INVALID,
+                        "The requested start time does not align with the doctor's schedule slots"));
+
+        LocalTime endTime = req.getStartTime().plusMinutes(schedule.getSlotDurationMinutes());
+
         if (appointmentRepository.existsByDoctorIdAndAppointmentDateAndStartTime(
-                req.getDoctorId(), req.getAppointmentDate(), req.getStartTime())) {
+                req.getDoctorId(), Date.valueOf(req.getAppointmentDate()), Time.valueOf(req.getStartTime()))) {
             throw new ConflictException(MessageCode.APPOINTMENT_SLOT_UNAVAILABLE);
         }
 
@@ -121,9 +139,9 @@ public class AppointmentService {
                 .patientId(patientId)
                 .doctorId(req.getDoctorId())
                 .hospitalId(req.getHospitalId())
-                .appointmentDate(req.getAppointmentDate())
-                .startTime(req.getStartTime())
-                .endTime(endTime)
+                .appointmentDate(Date.valueOf(req.getAppointmentDate()))
+                .startTime(Time.valueOf(req.getStartTime()))
+                .endTime(Time.valueOf(endTime))
                 .bookedByRole(caller.role())
                 .bookedById(caller.userId())
                 .isOffline(req.getIsOffline() != null ? req.getIsOffline() : false)
@@ -156,8 +174,7 @@ public class AppointmentService {
                         .build()));
 
         // Save doctor PMR access log
-        LocalDateTime accessExpiresAt = LocalDateTime.of(req.getAppointmentDate(), endTime);
-        DoctorPmrAccessLog accessLog = DoctorPmrAccessLog.builder()
+        LocalDateTime accessExpiresAt = LocalDateTime.of(req.getAppointmentDate(), endTime);        DoctorPmrAccessLog accessLog = DoctorPmrAccessLog.builder()
                 .doctorId(req.getDoctorId())
                 .patientId(patientId)
                 .appointmentId(appointment.getId())
@@ -167,6 +184,17 @@ public class AppointmentService {
         doctorPmrAccessLogRepository.save(accessLog);
 
         log.info("Appointment booked with id={} for patientId={}", appointment.getId(), patientId);
+
+        eventPublisher.publishEvent(new AppointmentEvent(
+                appointment.getId(), "BOOKED",
+                patientId, patient.getName(),
+                req.getDoctorId(), doctor.getName(),
+                req.getHospitalId(),
+                req.getAppointmentDate().format(DATE_FMT),
+                req.getStartTime().format(TIME_FMT),
+                caller.role()
+        ));
+
         return buildAppointmentResponse(appointment, patient, doctor, hospital);
     }
 
@@ -179,21 +207,20 @@ public class AppointmentService {
         Long hospitalId = "ADMIN".equals(caller.role()) ? caller.hospitalId() : null;
 
         Page<Appointment> page = appointmentRepository.findWithFilters(
-                patientId, doctorId, hospitalId, status, date, pageable);
+                patientId, doctorId, hospitalId, status, date != null ? Date.valueOf(date) : null, pageable);
 
         Page<AppointmentSummaryResponse> responsePage = page.map(a -> {
             Patient patient = patientRepository.findById(a.getPatientId()).orElse(null);
             Doctor doctor = doctorRepository.findById(a.getDoctorId()).orElse(null);
-            return AppointmentSummaryResponse.builder()
+            return new AppointmentSummaryResponse()
                     .id(a.getId())
                     .patientName(patient != null ? patient.getName() : "Unknown")
                     .doctorName(doctor != null ? doctor.getName() : "Unknown")
-                    .appointmentDate(a.getAppointmentDate())
-                    .startTime(a.getStartTime())
-                    .endTime(a.getEndTime())
+                    .appointmentDate(a.getAppointmentDate().toLocalDate())
+                    .startTime(a.getStartTime().toLocalTime())
+                    .endTime(a.getEndTime().toLocalTime())
                     .status(a.getStatus())
-                    .isOffline(a.getIsOffline())
-                    .build();
+                    .isOffline(a.getIsOffline());
         });
 
         return PagedResponse.from(responsePage);
@@ -259,14 +286,35 @@ public class AppointmentService {
         Hospital hospital = hospitalRepository.findById(appointment.getHospitalId()).orElse(null);
 
         log.info("Appointment id={} status updated to {}", id, newStatus);
+
+        if ("CANCELLED".equals(newStatus) || "COMPLETED".equals(newStatus)) {
+            Patient patient2 = patient;
+            Doctor doctor2 = doctor;
+            if (patient2 == null) patient2 = patientRepository.findById(appointment.getPatientId()).orElse(null);
+            if (doctor2 == null) doctor2 = doctorRepository.findById(appointment.getDoctorId()).orElse(null);
+            String pName = patient2 != null ? patient2.getName() : "Patient";
+            String dName = doctor2 != null ? doctor2.getName() : "Doctor";
+            eventPublisher.publishEvent(new AppointmentEvent(
+                    appointment.getId(), newStatus,
+                    appointment.getPatientId(), pName,
+                    appointment.getDoctorId(), dName,
+                    appointment.getHospitalId(),
+                    appointment.getAppointmentDate().toLocalDate().format(DATE_FMT),
+                    appointment.getStartTime().toLocalTime().format(TIME_FMT),
+                    caller.role()
+            ));
+        }
+
         return buildAppointmentResponse(appointment, patient, doctor, hospital);
     }
 
     private boolean isValidSlot(LocalTime requestedTime, DoctorSchedule schedule) {
-        LocalTime current = schedule.getStartTime();
-        while (current.plusMinutes(schedule.getSlotDurationMinutes()).compareTo(schedule.getEndTime()) <= 0) {
+        LocalTime current = schedule.getStartTime().toLocalTime();
+        LocalTime end     = schedule.getEndTime().toLocalTime();
+        int slotMins = schedule.getSlotDurationMinutes();
+        while (current.plusMinutes(slotMins).compareTo(end) <= 0) {
             if (current.equals(requestedTime)) return true;
-            current = current.plusMinutes(schedule.getSlotDurationMinutes());
+            current = current.plusMinutes(slotMins);
         }
         return false;
     }
@@ -292,7 +340,7 @@ public class AppointmentService {
     }
 
     private AppointmentResponse buildAppointmentResponse(Appointment a, Patient patient, Doctor doctor, Hospital hospital) {
-        return AppointmentResponse.builder()
+        return new AppointmentResponse()
                 .id(a.getId())
                 .patientId(a.getPatientId())
                 .patientName(patient != null ? patient.getName() : "Unknown")
@@ -300,14 +348,18 @@ public class AppointmentService {
                 .doctorName(doctor != null ? doctor.getName() : "Unknown")
                 .hospitalId(a.getHospitalId())
                 .hospitalName(hospital != null ? hospital.getName() : "Unknown")
-                .appointmentDate(a.getAppointmentDate())
-                .startTime(a.getStartTime())
-                .endTime(a.getEndTime())
+                .appointmentDate(a.getAppointmentDate().toLocalDate())
+                .startTime(a.getStartTime().toLocalTime())
+                .endTime(a.getEndTime().toLocalTime())
                 .status(a.getStatus())
                 .isOffline(a.getIsOffline())
                 .notes(a.getNotes())
                 .bookedByRole(a.getBookedByRole())
-                .createdAt(a.getCreatedAt())
-                .build();
+                .createdAt(toOffsetDateTime(a.getCreatedAt()));
+    }
+
+
+    private OffsetDateTime toOffsetDateTime(LocalDateTime value) {
+        return value != null ? value.atZone(ZoneId.systemDefault()).toOffsetDateTime() : null;
     }
 }
