@@ -166,16 +166,21 @@ public class DocumentService {
 
     @Transactional
     public void deleteDocument(Long documentId, JwtClaims caller) {
-        if (!"ADMIN".equals(caller.role())) {
-            throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED,
-                    "Only ADMIN can delete documents");
-        }
-
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException(MessageCode.DOCUMENT_NOT_FOUND));
 
-        if (!document.getHospitalId().equals(caller.hospitalId())) {
-            throw new AppDeniedException(MessageCode.DOCUMENT_ACCESS_DENIED);
+        if ("PATIENT".equals(caller.role())) {
+            if (!document.getPatientId().equals(caller.userId())) {
+                throw new AppDeniedException(MessageCode.DOCUMENT_ACCESS_DENIED,
+                        "Patients can only delete their own documents");
+            }
+        } else if ("ADMIN".equals(caller.role())) {
+            if (!document.getHospitalId().equals(caller.hospitalId())) {
+                throw new AppDeniedException(MessageCode.DOCUMENT_ACCESS_DENIED);
+            }
+        } else {
+            throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED,
+                    "Only PATIENT and ADMIN can delete documents");
         }
 
         document.setIsVisibleToPatient(false);

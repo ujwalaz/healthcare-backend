@@ -175,26 +175,28 @@ public class DoctorService {
             if (sessions.isEmpty()) {
                 result.add(new CalendarDayResponse()
                         .date(d).status(CalendarDayResponse.StatusEnum.NO_SCHEDULE)
-                        .totalSlots(0).bookedSlots(0).availableSlots(0));
-                continue;
-            }
-
-            int totalSlots = sessions.stream().mapToInt(s -> {
-                LocalTime cur = s.getStartTime().toLocalTime();
-                LocalTime end = s.getEndTime().toLocalTime();
-                int slotMins = s.getSlotDurationMinutes();
-                int count = 0;
-                while (!cur.plusMinutes(slotMins).isAfter(end)) {
-                    count++;
-                    cur = cur.plusMinutes(slotMins);
+                            .totalSlots(0).bookedSlots(0).availableSlots(0)
+                            .morningTotalSlots(0).morningAvailableSlots(0)
+                            .eveningTotalSlots(0).eveningAvailableSlots(0));
+                    continue;
                 }
-                return count;
-            }).sum();
 
-            int bookedSlots = appointmentRepository
-                    .countByDoctorIdAndAppointmentDateAndStatusNot(doctorId, Date.valueOf(d), "CANCELLED");
+                Time noon = Time.valueOf(LocalTime.NOON);
 
-            int availableSlots = Math.max(0, totalSlots - bookedSlots);
+                int morningTotalSlots = countSlots(sessions, "MORNING");
+                int eveningTotalSlots = countSlots(sessions, "EVENING");
+                int totalSlots = morningTotalSlots + eveningTotalSlots;
+
+                int morningBookedSlots = appointmentRepository
+                        .countByDoctorIdAndAppointmentDateAndStartTimeLessThanAndStatusNot(
+                                doctorId, Date.valueOf(d), noon, "CANCELLED");
+                int bookedSlots = appointmentRepository
+                        .countByDoctorIdAndAppointmentDateAndStatusNot(doctorId, Date.valueOf(d), "CANCELLED");
+                int eveningBookedSlots = bookedSlots - morningBookedSlots;
+
+                int morningAvailableSlots = Math.max(0, morningTotalSlots - morningBookedSlots);
+                int eveningAvailableSlots = Math.max(0, eveningTotalSlots - eveningBookedSlots);
+                int availableSlots = morningAvailableSlots + eveningAvailableSlots;
             CalendarDayResponse.StatusEnum status = availableSlots > 0
                     ? CalendarDayResponse.StatusEnum.AVAILABLE
                     : CalendarDayResponse.StatusEnum.FULL;
@@ -203,10 +205,30 @@ public class DoctorService {
                     .date(d).status(status)
                     .totalSlots(totalSlots)
                     .bookedSlots(bookedSlots)
-                    .availableSlots(availableSlots));
+                    .availableSlots(availableSlots)
+                    .morningTotalSlots(morningTotalSlots)
+                    .morningAvailableSlots(morningAvailableSlots)
+                    .eveningTotalSlots(eveningTotalSlots)
+                    .eveningAvailableSlots(eveningAvailableSlots));
         }
 
         return result;
+    }
+
+    private int countSlots(List<DoctorSchedule> sessions, String sessionType) {
+        return sessions.stream()
+                .filter(s -> sessionType.equals(s.getSessionType()))
+                .mapToInt(s -> {
+                    LocalTime cur = s.getStartTime().toLocalTime();
+                    LocalTime end = s.getEndTime().toLocalTime();
+                    int slotMins = s.getSlotDurationMinutes();
+                    int count = 0;
+                    while (!cur.plusMinutes(slotMins).isAfter(end)) {
+                        count++;
+                        cur = cur.plusMinutes(slotMins);
+                    }
+                    return count;
+                }).sum();
     }
 
     private DoctorSummaryResponse toSummary(Doctor d) {

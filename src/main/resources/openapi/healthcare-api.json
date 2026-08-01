@@ -886,6 +886,26 @@
             "type": "integer",
             "description": "Remaining open slots.",
             "example": 8
+          },
+          "morningTotalSlots": {
+            "type": "integer",
+            "description": "Total morning slots (before 12:00).",
+            "example": 6
+          },
+          "morningAvailableSlots": {
+            "type": "integer",
+            "description": "Available morning slots (before 12:00).",
+            "example": 3
+          },
+          "eveningTotalSlots": {
+            "type": "integer",
+            "description": "Total evening slots (12:00 and after).",
+            "example": 8
+          },
+          "eveningAvailableSlots": {
+            "type": "integer",
+            "description": "Available evening slots (12:00 and after).",
+            "example": 5
           }
         }
       },
