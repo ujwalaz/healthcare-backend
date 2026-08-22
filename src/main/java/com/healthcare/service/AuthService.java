@@ -44,6 +44,7 @@ public class AuthService {
                 .dob(request.getDob() != null ? Date.valueOf(request.getDob()) : null)
                 .mobileNumber(request.getMobileNumber())
                 .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -62,6 +63,10 @@ public class AuthService {
     public AuthResponse loginPatient(PatientLoginRequest request) {
         Patient patient = patientRepository.findByMobileNumber(request.getMobileNumber())
                 .orElseThrow(() -> new ResourceNotFoundException(MessageCode.PATIENT_NOT_FOUND));
+
+        if (!passwordEncoder.matches(request.getPassword(), patient.getPasswordHash())) {
+            throw new ResourceNotFoundException(MessageCode.AUTH_INVALID_CREDENTIALS);
+        }
 
         log.info("Patient login successful for id={}", patient.getId());
         String token = jwtUtil.generateToken(patient.getId(), "PATIENT", null);

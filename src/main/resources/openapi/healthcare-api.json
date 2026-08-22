@@ -234,17 +234,24 @@
       },
       "PatientLoginRequest": {
         "type": "object",
-        "description": "Request payload for patient login using a mobile number.",
+        "description": "Request payload for patient login using mobile number and password.",
         "properties": {
           "mobileNumber": {
             "type": "string",
             "pattern": "^[0-9]{10}$",
             "description": "Registered 10-digit mobile number.",
             "example": "9876543210"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "description": "Patient account password (min 8 characters).",
+            "example": "Secret@123"
           }
         },
         "required": [
-          "mobileNumber"
+          "mobileNumber",
+          "password"
         ]
       },
       "DoctorLoginRequest": {
@@ -325,13 +332,20 @@
             "format": "email",
             "description": "Patient email address.",
             "example": "asha.patil@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "description": "Patient account password (min 8 characters).",
+            "example": "Secret@123"
           }
         },
         "required": [
           "name",
           "age",
           "gender",
-          "mobileNumber"
+          "mobileNumber",
+          "password"
         ]
       },
       "AppointmentRequest": {

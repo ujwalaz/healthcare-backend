@@ -37,6 +37,9 @@ public class Patient {
     @Column(name = "email")
     private String email;
 
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 }
