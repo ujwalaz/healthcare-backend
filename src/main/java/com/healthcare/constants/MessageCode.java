@@ -18,6 +18,10 @@ public enum MessageCode {
     AUTH_ACCOUNT_INACTIVE("AUTH_ACCOUNT_INACTIVE", "Account is inactive"),
     AUTH_TOKEN_INVALID("AUTH_TOKEN_INVALID", "Authentication token is invalid or expired"),
     AUTH_UNAUTHORIZED("AUTH_UNAUTHORIZED", "You are not authorized to perform this action"),
+    AUTH_LOGOUT_SUCCESS("AUTH_LOGOUT_SUCCESS", "Logout successful"),
+
+    // Generic routing
+    ENDPOINT_NOT_FOUND("ENDPOINT_NOT_FOUND", "The requested endpoint does not exist"),
 
     // Patient
     PATIENT_FETCHED("PATIENT_FETCHED", "Patient fetched successfully"),

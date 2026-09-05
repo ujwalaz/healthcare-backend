@@ -28,6 +28,7 @@ public class JwtUtil {
 
     public String generateToken(Long userId, String role, Long hospitalId) {
         return Jwts.builder()
+                .id(java.util.UUID.randomUUID().toString())
                 .subject(userId.toString())
                 .claim("role", role)
                 .claim("hospitalId", hospitalId)
@@ -64,6 +65,14 @@ public class JwtUtil {
         if (hospitalId instanceof Integer) return ((Integer) hospitalId).longValue();
         if (hospitalId instanceof Long) return (Long) hospitalId;
         return Long.parseLong(hospitalId.toString());
+    }
+
+    public String extractJti(String token) {
+        return getClaims(token).getId();
+    }
+
+    public Date extractExpiration(String token) {
+        return getClaims(token).getExpiration();
     }
 
     private Claims getClaims(String token) {

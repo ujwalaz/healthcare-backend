@@ -1,8 +1,7 @@
 package com.healthcare.controller;
 
-import com.healthcare.constants.MessageCode;
-import com.healthcare.dto.ApiResponse;
 import com.healthcare.dto.*;
+import com.healthcare.constants.MessageCode;
 import com.healthcare.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,5 +43,15 @@ public class AuthController {
             @Valid @RequestBody AdminLoginRequest request) {
         AuthResponse response = authService.loginAdmin(request);
         return ResponseEntity.ok(ApiResponse.ok(MessageCode.AUTH_LOGIN_SUCCESS, response));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestHeader("Authorization") String authorizationHeader) {
+        String token = authorizationHeader.startsWith("Bearer ")
+                ? authorizationHeader.substring(7)
+                : authorizationHeader;
+        authService.logout(token);
+        return ResponseEntity.ok(ApiResponse.ok(MessageCode.AUTH_LOGOUT_SUCCESS, null));
     }
 }
