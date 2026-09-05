@@ -11,6 +11,7 @@ import com.healthcare.repository.AdminUserRepository;
 import com.healthcare.repository.DoctorRepository;
 import com.healthcare.repository.PatientRepository;
 import com.healthcare.security.JwtUtil;
+import com.healthcare.security.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,6 +31,7 @@ public class AuthService {
     private final AdminUserRepository adminUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Transactional
     public AuthResponse registerPatient(PatientRegisterRequest request) {
@@ -121,5 +123,20 @@ public class AuthService {
                 .name(admin.getName())
                 .role(AuthResponse.RoleEnum.ADMIN)
                 .hospitalId(admin.getHospitalId());
+    }
+
+    /**
+     * Revokes the given JWT so it can no longer be used, even though it has not
+     * yet naturally expired. Works for any authenticated role (patient, doctor, admin).
+     */
+    @Transactional
+    public void logout(String token) {
+        if (!jwtUtil.validateToken(token)) {
+            throw new ResourceNotFoundException(MessageCode.AUTH_TOKEN_INVALID);
+        }
+        String jti = jwtUtil.extractJti(token);
+        java.util.Date expiration = jwtUtil.extractExpiration(token);
+        tokenBlacklistService.revoke(jti, expiration);
+        log.info("Token revoked for userId={}, role={}", jwtUtil.extractUserId(token), jwtUtil.extractRole(token));
     }
 }
