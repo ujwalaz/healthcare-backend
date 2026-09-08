@@ -68,5 +68,4 @@ jobs:
             az webapp config appsettings set \
               --name healthcare \
               --resource-group medicalResourceGroup \
-              --slot Production \
               --settings JASYPT_ENCRYPTOR_PASSWORD="${{ secrets.JASYPT_ENCRYPTOR_PASSWORD }}"
