@@ -67,6 +67,6 @@ jobs:
           inlineScript: |
             az webapp config appsettings set \
               --name healthcare \
-              --resource-group <YOUR_RESOURCE_GROUP_NAME> \
+              --resource-group medicalResourceGroup \
               --slot Production \
               --settings JASYPT_ENCRYPTOR_PASSWORD="${{ secrets.JASYPT_ENCRYPTOR_PASSWORD }}"
