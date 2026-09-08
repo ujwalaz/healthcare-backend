@@ -60,4 +60,13 @@ jobs:
           app-name: 'healthcare'
           slot-name: 'Production'
           package: '*.jar'
-          
+
+      - name: Set Jasypt encryptor password in App Service settings
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az webapp config appsettings set \
+              --name healthcare \
+              --resource-group <YOUR_RESOURCE_GROUP_NAME> \
+              --slot Production \
+              --settings JASYPT_ENCRYPTOR_PASSWORD="${{ secrets.JASYPT_ENCRYPTOR_PASSWORD }}"
