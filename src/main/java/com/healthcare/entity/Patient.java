@@ -22,13 +22,10 @@ public class Patient {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "age", nullable = false)
-    private Integer age;
-
     @Column(name = "gender", nullable = false)
     private String gender;
 
-    @Column(name = "dob")
+    @Column(name = "dob", nullable = false)
     private Date dob;
 
     @Column(name = "mobile_number", nullable = false)
@@ -39,6 +36,18 @@ public class Patient {
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
+
+    @Column(name = "address")
+    private String address;
+
+    @Column(name = "emergency_contact_number")
+    private String emergencyContactNumber;
+
+    @Column(name = "blood_group")
+    private String bloodGroup;
+
+    @Column(name = "permanent_illness")
+    private String permanentIllness;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

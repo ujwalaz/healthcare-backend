@@ -16,6 +16,7 @@ import org.springframework.util.StringUtils;
 import java.sql.Date;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.Period;
 import java.time.ZoneId;
 
 @Service
@@ -38,14 +39,23 @@ public class PatientService {
         if (StringUtils.hasText(request.getName())) {
             patient.setName(request.getName());
         }
-        if (request.getAge() != null) {
-            patient.setAge(request.getAge());
-        }
         if (request.getDob() != null) {
             patient.setDob(Date.valueOf(request.getDob()));
         }
         if (request.getEmail() != null) {
             patient.setEmail(request.getEmail());
+        }
+        if (request.getAddress() != null) {
+            patient.setAddress(request.getAddress());
+        }
+        if (request.getEmergencyContactNumber() != null) {
+            patient.setEmergencyContactNumber(request.getEmergencyContactNumber());
+        }
+        if (request.getBloodGroup() != null) {
+            patient.setBloodGroup(request.getBloodGroup().getValue());
+        }
+        if (request.getPermanentIllness() != null) {
+            patient.setPermanentIllness(request.getPermanentIllness());
         }
 
         patient = patientRepository.save(patient);
@@ -76,11 +86,15 @@ public class PatientService {
         return new PatientResponse()
                 .id(p.getId())
                 .name(p.getName())
-                .age(p.getAge())
+                .age(computeAge(p.getDob()))
                 .gender(p.getGender())
                 .dob(p.getDob() != null ? p.getDob().toLocalDate() : null)
                 .mobileNumber(p.getMobileNumber())
                 .email(p.getEmail())
+                .address(p.getAddress())
+                .emergencyContactNumber(p.getEmergencyContactNumber())
+                .bloodGroup(p.getBloodGroup() != null ? PatientResponse.BloodGroupEnum.fromValue(p.getBloodGroup()) : null)
+                .permanentIllness(p.getPermanentIllness())
                 .createdAt(toOffsetDateTime(p.getCreatedAt()));
     }
 
@@ -89,10 +103,13 @@ public class PatientService {
                 .id(p.getId())
                 .name(p.getName())
                 .mobileNumber(p.getMobileNumber())
-                .age(p.getAge())
+                .age(computeAge(p.getDob()))
                 .gender(p.getGender());
     }
 
+    private Integer computeAge(Date dob) {
+        return dob != null ? Period.between(dob.toLocalDate(), java.time.LocalDate.now()).getYears() : null;
+    }
 
     private OffsetDateTime toOffsetDateTime(LocalDateTime value) {
         return value != null ? value.atZone(ZoneId.systemDefault()).toOffsetDateTime() : null;

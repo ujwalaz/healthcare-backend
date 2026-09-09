@@ -41,12 +41,15 @@ public class AuthService {
 
         Patient patient = Patient.builder()
                 .name(request.getName())
-                .age(request.getAge())
                 .gender(request.getGender())
-                .dob(request.getDob() != null ? Date.valueOf(request.getDob()) : null)
+                .dob(Date.valueOf(request.getDob()))
                 .mobileNumber(request.getMobileNumber())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .address(request.getAddress())
+                .emergencyContactNumber(request.getEmergencyContactNumber())
+                .bloodGroup(request.getBloodGroup() != null ? request.getBloodGroup().getValue() : null)
+                .permanentIllness(request.getPermanentIllness())
                 .createdAt(LocalDateTime.now())
                 .build();
 

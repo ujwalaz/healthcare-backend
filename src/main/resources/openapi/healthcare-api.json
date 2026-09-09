@@ -304,12 +304,6 @@
             "description": "Patient full name.",
             "example": "Asha Patil"
           },
-          "age": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Patient age in years.",
-            "example": 34
-          },
           "gender": {
             "type": "string",
             "description": "Patient gender.",
@@ -338,12 +332,34 @@
             "minLength": 8,
             "description": "Patient account password (min 8 characters).",
             "example": "Secret@123"
+          },
+          "address": {
+            "type": "string",
+            "description": "Patient residential address.",
+            "example": "12 MG Road, Pune, MH"
+          },
+          "emergencyContactNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{10}$",
+            "description": "Emergency contact 10-digit mobile number.",
+            "example": "9876500000"
+          },
+          "bloodGroup": {
+            "type": "string",
+            "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+            "description": "Patient blood group.",
+            "example": "O+"
+          },
+          "permanentIllness": {
+            "type": "string",
+            "description": "Long-term / permanent illness details, if any.",
+            "example": "Type 2 Diabetes"
           }
         },
         "required": [
           "name",
-          "age",
           "gender",
+          "dob",
           "mobileNumber",
           "password"
         ]
@@ -1034,8 +1050,9 @@
           },
           "age": {
             "type": "integer",
-            "description": "Patient age.",
-            "example": 34
+            "description": "Patient age in years, computed from dob.",
+            "example": 34,
+            "readOnly": true
           },
           "gender": {
             "type": "string",
@@ -1059,6 +1076,27 @@
             "description": "Patient email address.",
             "example": "asha.patil@example.com"
           },
+          "address": {
+            "type": "string",
+            "description": "Patient residential address.",
+            "example": "12 MG Road, Pune, MH"
+          },
+          "emergencyContactNumber": {
+            "type": "string",
+            "description": "Emergency contact mobile number.",
+            "example": "9876500000"
+          },
+          "bloodGroup": {
+            "type": "string",
+            "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+            "description": "Patient blood group.",
+            "example": "O+"
+          },
+          "permanentIllness": {
+            "type": "string",
+            "description": "Long-term / permanent illness details, if any.",
+            "example": "Type 2 Diabetes"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -1076,11 +1114,6 @@
             "description": "Updated patient name.",
             "example": "Asha P. Patil"
           },
-          "age": {
-            "type": "integer",
-            "description": "Updated patient age.",
-            "example": 35
-          },
           "dob": {
             "type": "string",
             "format": "date",
@@ -1092,6 +1125,28 @@
             "format": "email",
             "description": "Updated patient email address.",
             "example": "asha.new@example.com"
+          },
+          "address": {
+            "type": "string",
+            "description": "Updated patient residential address.",
+            "example": "12 MG Road, Pune, MH"
+          },
+          "emergencyContactNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{10}$",
+            "description": "Updated emergency contact 10-digit mobile number.",
+            "example": "9876500000"
+          },
+          "bloodGroup": {
+            "type": "string",
+            "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+            "description": "Updated patient blood group.",
+            "example": "O+"
+          },
+          "permanentIllness": {
+            "type": "string",
+            "description": "Updated long-term / permanent illness details.",
+            "example": "Type 2 Diabetes"
           }
         }
       },
@@ -1117,8 +1172,9 @@
           },
           "age": {
             "type": "integer",
-            "description": "Patient age.",
-            "example": 34
+            "description": "Patient age in years, computed from dob.",
+            "example": 34,
+            "readOnly": true
           },
           "gender": {
             "type": "string",
