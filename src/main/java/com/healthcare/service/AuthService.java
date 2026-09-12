@@ -5,6 +5,7 @@ import com.healthcare.constants.MessageCode;
 import com.healthcare.entity.Patient;
 import com.healthcare.entity.Doctor;
 import com.healthcare.entity.AdminUser;
+import com.healthcare.exception.BadRequestException;
 import com.healthcare.exception.ConflictException;
 import com.healthcare.exception.ResourceNotFoundException;
 import com.healthcare.repository.AdminUserRepository;
@@ -64,8 +65,24 @@ public class AuthService {
                 .role(AuthResponse.RoleEnum.PATIENT);
     }
 
+    /**
+     * Single entry point for PATIENT, DOCTOR, and ADMIN login. The role query
+     * parameter (case-insensitive) decides which lookup/validation path runs.
+     */
     @Transactional(readOnly = true)
-    public AuthResponse loginPatient(PatientLoginRequest request) {
+    public AuthResponse login(String role, LoginRequest request) {
+        if (role == null) {
+            throw new BadRequestException(MessageCode.AUTH_INVALID_ROLE);
+        }
+        return switch (role.toUpperCase()) {
+            case "PATIENT" -> loginPatient(request);
+            case "DOCTOR" -> loginDoctor(request);
+            case "ADMIN" -> loginAdmin(request);
+            default -> throw new BadRequestException(MessageCode.AUTH_INVALID_ROLE);
+        };
+    }
+
+    private AuthResponse loginPatient(LoginRequest request) {
         Patient patient = patientRepository.findByMobileNumber(request.getMobileNumber())
                 .orElseThrow(() -> new ResourceNotFoundException(MessageCode.PATIENT_NOT_FOUND));
 
@@ -82,8 +99,7 @@ public class AuthService {
                 .role(AuthResponse.RoleEnum.PATIENT);
     }
 
-    @Transactional(readOnly = true)
-    public AuthResponse loginDoctor(DoctorLoginRequest request) {
+    private AuthResponse loginDoctor(LoginRequest request) {
         Doctor doctor = doctorRepository.findByPhone(request.getMobileNumber())
                 .orElseThrow(() -> new ResourceNotFoundException(MessageCode.DOCTOR_NOT_FOUND));
 
@@ -105,8 +121,7 @@ public class AuthService {
                 .hospitalId(doctor.getHospitalId());
     }
 
-    @Transactional(readOnly = true)
-    public AuthResponse loginAdmin(AdminLoginRequest request) {
+    private AuthResponse loginAdmin(LoginRequest request) {
         AdminUser admin = adminUserRepository.findByMobileNumber(request.getMobileNumber())
                 .orElseThrow(() -> new ResourceNotFoundException(MessageCode.AUTH_INVALID_CREDENTIALS));
 

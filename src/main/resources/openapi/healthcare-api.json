@@ -5,9 +5,548 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/api/auth/patient/register": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "registerPatient",
+        "summary": "Register a new patient",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PatientRegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Patient registered",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "login",
+        "summary": "Log in as a patient, doctor, or admin using mobile number and password",
+        "description": "The 'role' query parameter selects which login is performed (PATIENT, DOCTOR, or ADMIN). All three roles authenticate with the same mobileNumber + password payload shape.",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["PATIENT", "DOCTOR", "ADMIN"] },
+            "description": "Role to authenticate as."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "logout",
+        "summary": "Log out the current user by invalidating the JWT",
+        "parameters": [
+          { "name": "Authorization", "in": "header", "required": true, "schema": { "type": "string" }, "description": "Bearer token, e.g. 'Bearer <jwt>'" }
+        ],
+        "responses": {
+          "200": { "description": "Logged out successfully" }
+        }
+      }
+    },
+    "/api/appointments/slots": {
+      "get": {
+        "tags": ["Appointments"],
+        "operationId": "getAvailableSlots",
+        "summary": "Get available slots for a doctor on a given date",
+        "parameters": [
+          { "name": "doctorId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "date", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available slots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/SlotResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/appointments/slots/today-summary": {
+      "get": {
+        "tags": ["Appointments"],
+        "operationId": "getTodaySlotsSummary",
+        "summary": "Get total available appointment slots for today across all hospitals and doctors",
+        "description": "Aggregates today's remaining (unbooked) schedule slots for every active doctor in every hospital, with a per-hospital breakdown.",
+        "responses": {
+          "200": {
+            "description": "Today's available slots summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TodaySlotsSummaryResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/appointments": {
+      "post": {
+        "tags": ["Appointments"],
+        "operationId": "bookAppointment",
+        "summary": "Book an appointment",
+        "description": "PATIENT books for self (patientId resolved from JWT if omitted). ADMIN books on behalf of a patient at their hospital.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AppointmentRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Appointment booked",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AppointmentResponse" }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Appointments"],
+        "operationId": "getAppointments",
+        "summary": "List appointments for the current user",
+        "description": "PATIENT sees own appointments. DOCTOR sees own appointments. ADMIN sees appointments for their hospital.",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated appointment list",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AppointmentSummaryPagedResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/appointments/{id}": {
+      "get": {
+        "tags": ["Appointments"],
+        "operationId": "getAppointmentById",
+        "summary": "Get an appointment by id",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Appointment detail",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AppointmentResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/appointments/{id}/status": {
+      "patch": {
+        "tags": ["Appointments"],
+        "operationId": "updateAppointmentStatus",
+        "summary": "Update the status of an appointment",
+        "description": "ADMIN and PATIENT (own appointments) can update status, e.g. cancel or complete.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StatusUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Appointment status updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AppointmentResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/hospitals": {
+      "get": {
+        "tags": ["Hospitals"],
+        "operationId": "getAllHospitals",
+        "summary": "List all hospitals",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated hospital list",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HospitalPagedResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/hospitals/{id}": {
+      "get": {
+        "tags": ["Hospitals"],
+        "operationId": "getHospitalById",
+        "summary": "Get hospital details by id",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hospital detail",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HospitalDetailResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/profile": {
+      "get": {
+        "tags": ["Patients"],
+        "operationId": "getPatientProfile",
+        "summary": "Get the current patient's own profile",
+        "description": "PATIENT only.",
+        "responses": {
+          "200": {
+            "description": "Patient profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PatientResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Patients"],
+        "operationId": "updatePatientProfile",
+        "summary": "Update the current patient's own profile",
+        "description": "PATIENT only.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PatientUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Patient profile updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PatientResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}": {
+      "get": {
+        "tags": ["Patients"],
+        "operationId": "getPatientById",
+        "summary": "Get a patient by id",
+        "description": "ADMIN or DOCTOR only.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Patient detail",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PatientResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/search": {
+      "get": {
+        "tags": ["Patients"],
+        "operationId": "searchPatients",
+        "summary": "Search patients",
+        "description": "ADMIN only.",
+        "parameters": [
+          { "name": "query", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated patient search results",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PatientSummaryPagedResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pmr/patient/{patientId}": {
+      "get": {
+        "tags": ["PMR"],
+        "operationId": "getPmr",
+        "summary": "Get a patient's PMR summary",
+        "description": "PATIENT (own only). DOCTOR access requires an active appointment window with the patient. ADMIN has no PMR access.",
+        "parameters": [
+          { "name": "patientId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "hospitalId", "in": "query", "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "PMR summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PmrResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pmr/patient/{patientId}/entries": {
+      "get": {
+        "tags": ["PMR"],
+        "operationId": "getPmrEntries",
+        "summary": "List PMR entries for a patient",
+        "description": "PATIENT (own only). DOCTOR access requires an active appointment window with the patient. ADMIN has no PMR access.",
+        "parameters": [
+          { "name": "patientId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "hospitalId", "in": "query", "schema": { "type": "integer", "format": "int64" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated PMR entries",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PmrEntryPagedResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pmr/patient/{patientId}/entry": {
+      "post": {
+        "tags": ["PMR"],
+        "operationId": "addPmrEntry",
+        "summary": "Add a PMR entry for a patient",
+        "description": "DOCTOR only, and only during an active appointment window with the patient.",
+        "parameters": [
+          { "name": "patientId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "hospitalId", "in": "query", "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PmrEntryRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "PMR entry created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PmrEntryResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/doctors": {
+      "get": {
+        "tags": ["Doctors"],
+        "operationId": "getDoctors",
+        "summary": "List doctors, optionally filtered by hospital",
+        "parameters": [
+          { "name": "hospitalId", "in": "query", "schema": { "type": "integer", "format": "int64" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated doctor list",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DoctorSummaryPagedResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/doctors/{id}": {
+      "get": {
+        "tags": ["Doctors"],
+        "operationId": "getDoctorById",
+        "summary": "Get doctor details by id",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Doctor detail",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DoctorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/doctors/{id}/schedule": {
+      "get": {
+        "tags": ["Doctors"],
+        "operationId": "getDoctorSchedule",
+        "summary": "Get a doctor's weekly recurring schedule",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Doctor schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ScheduleResponse" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Doctors"],
+        "operationId": "saveDoctorSchedule",
+        "summary": "Save a doctor's weekly recurring schedule",
+        "description": "One schedule row per doctor per weekday (day_of_week 0=Mon ... 6=Sun).",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ScheduleRequest" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schedule saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ScheduleResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/doctors/{id}/calendar": {
+      "get": {
+        "tags": ["Doctors"],
+        "operationId": "getDoctorCalendar",
+        "summary": "Get a doctor's calendar availability between two dates",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "from", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } },
+          { "name": "to", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Calendar availability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/CalendarDayResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/upload": {
       "post": {
         "tags": ["Documents"],
+        "operationId": "uploadDocument",
         "summary": "Upload a document",
         "description": "PATIENT may upload PREVIOUS_RECORD type only (for themselves). ADMIN may upload any type for their hospital.",
         "requestBody": {
@@ -43,6 +582,7 @@
     "/api/documents/patient/{patientId}": {
       "get": {
         "tags": ["Documents"],
+        "operationId": "getPatientDocuments",
         "summary": "List documents for a patient",
         "description": "PATIENT sees own visible documents. ADMIN sees all for their hospital. DOCTOR sees patient-uploaded documents within the appointment time window.",
         "parameters": [
@@ -57,7 +597,7 @@
             "description": "Document list",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/DocumentSummaryResponse" }
+                "schema": { "$ref": "#/components/schemas/DocumentSummaryPagedResponse" }
               }
             }
           }
@@ -67,6 +607,7 @@
     "/api/documents/{id}/download": {
       "get": {
         "tags": ["Documents"],
+        "operationId": "getDocumentDownloadUrl",
         "summary": "Get a SAS download URL for a document",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
@@ -86,6 +627,7 @@
     "/api/documents/{id}": {
       "delete": {
         "tags": ["Documents"],
+        "operationId": "deleteDocument",
         "summary": "Soft-delete a document (ADMIN only)",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
@@ -98,6 +640,7 @@
     "/api/notifications/my": {
       "get": {
         "tags": ["Notifications"],
+        "operationId": "getMyNotifications",
         "summary": "Get notifications for the current user",
         "parameters": [
           { "name": "isRead", "in": "query", "schema": { "type": "boolean" } },
@@ -109,7 +652,7 @@
             "description": "Paginated notifications",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/NotificationResponse" }
+                "schema": { "$ref": "#/components/schemas/NotificationPagedResponse" }
               }
             }
           }
@@ -119,6 +662,7 @@
     "/api/notifications/unread-count": {
       "get": {
         "tags": ["Notifications"],
+        "operationId": "getUnreadNotificationCount",
         "summary": "Get unread notification count for the current user",
         "responses": {
           "200": {
@@ -135,6 +679,7 @@
     "/api/notifications/read-all": {
       "patch": {
         "tags": ["Notifications"],
+        "operationId": "markAllNotificationsRead",
         "summary": "Mark all notifications as read for the current user",
         "responses": {
           "200": { "description": "All notifications marked as read" }
@@ -144,6 +689,7 @@
     "/api/notifications/{id}/read": {
       "patch": {
         "tags": ["Notifications"],
+        "operationId": "markNotificationRead",
         "summary": "Mark a single notification as read",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
@@ -163,6 +709,7 @@
     "/api/notifications": {
       "post": {
         "tags": ["Notifications"],
+        "operationId": "sendNotification",
         "summary": "Send a notification (ADMIN only)",
         "requestBody": {
           "required": true,
@@ -232,9 +779,9 @@
           "role"
         ]
       },
-      "PatientLoginRequest": {
+      "LoginRequest": {
         "type": "object",
-        "description": "Request payload for patient login using mobile number and password.",
+        "description": "Unified login payload for PATIENT, DOCTOR, and ADMIN roles (mobile number + password). The role itself is selected via the 'role' query parameter on the login endpoint.",
         "properties": {
           "mobileNumber": {
             "type": "string",
@@ -245,49 +792,8 @@
           "password": {
             "type": "string",
             "minLength": 8,
-            "description": "Patient account password (min 8 characters).",
+            "description": "Account password (min 8 characters).",
             "example": "Secret@123"
-          }
-        },
-        "required": [
-          "mobileNumber",
-          "password"
-        ]
-      },
-      "DoctorLoginRequest": {
-        "type": "object",
-        "description": "Request payload for doctor login using mobile number and password.",
-        "properties": {
-          "mobileNumber": {
-            "type": "string",
-            "pattern": "^[0-9]{10}$",
-            "description": "Doctor's 10-digit mobile number.",
-            "example": "9988776655"
-          },
-          "password": {
-            "type": "string",
-            "description": "Doctor account password.",
-            "example": "StrongPassword@123"
-          }
-        },
-        "required": [
-          "mobileNumber",
-          "password"
-        ]
-      },
-      "AdminLoginRequest": {
-        "type": "object",
-        "description": "Request payload for admin login using mobile number and password.",
-        "properties": {
-          "mobileNumber": {
-            "type": "string",
-            "description": "Admin mobile number.",
-            "example": "9876501234"
-          },
-          "password": {
-            "type": "string",
-            "description": "Admin account password.",
-            "example": "AdminPassword@123"
           }
         },
         "required": [
@@ -556,6 +1062,20 @@
           }
         }
       },
+      "AppointmentSummaryPagedResponse": {
+        "type": "object",
+        "description": "Paginated list of appointment summaries.",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AppointmentSummaryResponse" }
+          },
+          "page": { "type": "integer", "example": 0 },
+          "size": { "type": "integer", "example": 20 },
+          "totalElements": { "type": "integer", "format": "int64", "example": 42 },
+          "totalPages": { "type": "integer", "example": 3 }
+        }
+      },
       "SlotResponse": {
         "type": "object",
         "description": "Available appointment slot window.",
@@ -572,6 +1092,30 @@
             "description": "Slot end time.",
             "example": "10:45:00"
           }
+        }
+      },
+      "TodaySlotsSummaryResponse": {
+        "type": "object",
+        "description": "Aggregate count of available appointment slots today across all hospitals and doctors.",
+        "properties": {
+          "date": { "type": "string", "format": "date", "example": "2026-09-12" },
+          "totalAvailableSlots": { "type": "integer", "example": 128 },
+          "totalHospitals": { "type": "integer", "example": 4 },
+          "totalDoctors": { "type": "integer", "example": 22 },
+          "hospitals": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/HospitalSlotsSummary" }
+          }
+        }
+      },
+      "HospitalSlotsSummary": {
+        "type": "object",
+        "description": "Available slot count for a single hospital, part of the today-summary breakdown.",
+        "properties": {
+          "hospitalId": { "type": "integer", "format": "int64", "example": 1 },
+          "hospitalName": { "type": "string", "example": "City Care Hospital" },
+          "doctorCount": { "type": "integer", "example": 5 },
+          "availableSlots": { "type": "integer", "example": 34 }
         }
       },
       "StatusUpdateRequest": {
@@ -696,6 +1240,20 @@
           }
         }
       },
+      "PmrEntryPagedResponse": {
+        "type": "object",
+        "description": "Paginated list of PMR entries.",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PmrEntryResponse" }
+          },
+          "page": { "type": "integer", "example": 0 },
+          "size": { "type": "integer", "example": 20 },
+          "totalElements": { "type": "integer", "format": "int64", "example": 42 },
+          "totalPages": { "type": "integer", "example": 3 }
+        }
+      },
       "PmrResponse": {
         "type": "object",
         "description": "Patient medical record summary.",
@@ -778,6 +1336,20 @@
             "description": "Hospital contact email.",
             "example": "contact@sunrisecare.com"
           }
+        }
+      },
+      "HospitalPagedResponse": {
+        "type": "object",
+        "description": "Paginated list of hospitals.",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/HospitalResponse" }
+          },
+          "page": { "type": "integer", "example": 0 },
+          "size": { "type": "integer", "example": 20 },
+          "totalElements": { "type": "integer", "format": "int64", "example": 42 },
+          "totalPages": { "type": "integer", "example": 3 }
         }
       },
       "HospitalDetailResponse": {
@@ -884,6 +1456,20 @@
             "description": "Whether the doctor account is active.",
             "example": true
           }
+        }
+      },
+      "DoctorSummaryPagedResponse": {
+        "type": "object",
+        "description": "Paginated list of doctor summaries.",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DoctorSummaryResponse" }
+          },
+          "page": { "type": "integer", "example": 0 },
+          "size": { "type": "integer", "example": 20 },
+          "totalElements": { "type": "integer", "format": "int64", "example": 42 },
+          "totalPages": { "type": "integer", "example": 3 }
         }
       },
       "CalendarDayResponse": {
@@ -1183,6 +1769,20 @@
           }
         }
       },
+      "PatientSummaryPagedResponse": {
+        "type": "object",
+        "description": "Paginated list of patient summaries.",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PatientSummaryResponse" }
+          },
+          "page": { "type": "integer", "example": 0 },
+          "size": { "type": "integer", "example": 20 },
+          "totalElements": { "type": "integer", "format": "int64", "example": 42 },
+          "totalPages": { "type": "integer", "example": 3 }
+        }
+      },
       "DocumentResponse": {
         "type": "object",
         "description": "Detailed uploaded document response.",
@@ -1280,6 +1880,20 @@
           }
         }
       },
+      "DocumentSummaryPagedResponse": {
+        "type": "object",
+        "description": "Paginated list of document summaries.",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DocumentSummaryResponse" }
+          },
+          "page": { "type": "integer", "example": 0 },
+          "size": { "type": "integer", "example": 20 },
+          "totalElements": { "type": "integer", "format": "int64", "example": 42 },
+          "totalPages": { "type": "integer", "example": 3 }
+        }
+      },
       "DownloadUrlResponse": {
         "type": "object",
         "description": "Time-limited download URL for a document.",
@@ -1362,6 +1976,20 @@
             "description": "Timestamp when the notification was created.",
             "example": "2026-06-27T11:30:00Z"
           }
+        }
+      },
+      "NotificationPagedResponse": {
+        "type": "object",
+        "description": "Paginated list of notifications.",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NotificationResponse" }
+          },
+          "page": { "type": "integer", "example": 0 },
+          "size": { "type": "integer", "example": 20 },
+          "totalElements": { "type": "integer", "format": "int64", "example": 42 },
+          "totalPages": { "type": "integer", "example": 3 }
         }
       },
       "NotificationSentResponse": {

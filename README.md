@@ -21,22 +21,42 @@ Spring Boot REST API for the Healthcare OPD Platform. Supports three roles — *
 
 ## Project Structure
 
+The controller layer is now **generated + hand-written in two parts**, driven entirely by `openapi/healthcare-api.json`:
+
 ```
 src/main/java/com/healthcare/
-├── config/         # Security, CORS, Azure Blob, Swagger, LocalTimeConverter
-├── controller/     # REST controllers (Auth, Appointment, Doctor, Hospital, Patient, PMR, Document, Notification)
-├── dto/            # Generated from openapi/healthcare-api.json at build time
-├── entity/         # JPA entities
-├── repository/     # Spring Data JPA repositories
-├── service/        # Business logic
-├── security/       # JwtAuthFilter, JwtUtil, JwtClaims, SecurityUtils
-└── exception/      # GlobalExceptionHandler, custom exceptions
+├── annotation/      # @ApiMessage — declares the MessageCode used to envelope a handler's response
+├── api/             # *ApiImpl.java — hand-written, implements the generated *Api interfaces, delegates to service/
+├── config/          # Security, CORS, Azure Blob, Swagger, LocalTimeConverter, ApiResponseEnvelopeAdvice
+├── dto/             # Generated from openapi/healthcare-api.json at build time
+├── entity/          # JPA entities
+├── repository/      # Spring Data JPA repositories
+├── service/         # Business logic (unchanged — still called by *ApiImpl)
+├── security/        # JwtAuthFilter, JwtUtil, JwtClaims, SecurityUtils
+└── exception/       # GlobalExceptionHandler, custom exceptions
+
+target/generated-sources/openapi/src/main/java/com/healthcare/
+├── api/             # *Api.java — GENERATED interfaces (AuthApi, AppointmentsApi, HospitalsApi, PatientsApi,
+│                     # PmrApi, DoctorsApi, DocumentsApi, NotificationsApi). Do not edit — regenerated on every build.
+└── dto/              # Generated request/response DTOs (incl. per-type *PagedResponse wrappers)
 
 src/main/resources/
 ├── application.properties
 └── openapi/
-    └── healthcare-api.json   # OpenAPI 3.0 spec — source of truth for all DTOs
+    └── healthcare-api.json   # OpenAPI 3.0 spec — single source of truth for both DTOs and API interfaces
 ```
+
+**Request flow:** `*Api` (generated interface, defines route/params/validation via annotations) → `*ApiImpl` (hand-written `@RestController`, implements the interface) → `*Service` (business logic, unchanged) → `*Repository` (Spring Data JPA).
+
+There is no `controller/` package anymore — the 8 old hand-written controllers were removed in favor of the `*ApiImpl` classes, which own the routes directly.
+
+### Preserving the `ApiResponse<T>` envelope
+
+Because OpenAPI schemas can't express a generic wrapper without an explosion of per-type schemas, the spec's response schemas reference bare DTOs, and the generated interfaces return bare `ResponseEntity<Dto>`. To keep the existing wire contract (`{ success, code, message, data }`) that the frontend depends on:
+
+- Every non-void `*ApiImpl` method is annotated with `@ApiMessage(MessageCode.XXX)`.
+- `ApiResponseEnvelopeAdvice` (a `ResponseBodyAdvice`) detects that annotation and wraps the raw body into `ApiResponse.ok(code, body)` at serialization time — transparently, with no spec/schema changes needed.
+- **Known limitation:** Spring does not invoke `ResponseBodyAdvice` for `ResponseEntity<Void>` with a `null` body, so the 3 void endpoints (`logout`, `deleteDocument`, `markAllNotificationsRead`) return an empty 200 response instead of an enveloped `{ data: null }` body.
 
 ---
 
@@ -65,6 +85,16 @@ All configuration lives in `src/main/resources/application.properties`.
 | `app.azure.storage.sas-expiry-minutes` | SAS URL validity window (default 60 min) |
 
 > **Important:** `sendTimeAsDatetime=false` must remain in the JDBC URL. Without it, the MSSQL JDBC driver sends `java.sql.Time` as `DATETIME`, causing type mismatch errors on SQL Server `TIME` columns.
+
+### Internal-token protected endpoints
+
+`GET /api/appointments/slots/today-summary` is exempt from JWT authentication and instead requires a static shared-secret header:
+
+```
+X-Internal-Token: InternalWebApp
+```
+
+The expected value is configurable via `app.internal-token` (defaults to `InternalWebApp`). `InternalTokenFilter` intercepts this specific path before Spring Security's normal auth chain and rejects requests with a missing/incorrect header (`401`, `AUTH_INTERNAL_TOKEN_INVALID`). This endpoint is intended for trusted internal callers (e.g. an internal dashboard), not end-user (patient/doctor/admin) JWTs.
 
 ---
 
@@ -99,13 +129,13 @@ All endpoints are prefixed with `/api`. Responses are wrapped in `ApiResponse<T>
 
 ### Auth (`/api/auth`) — Public
 
-| Method | Path | Body |
-|---|---|---|
-| POST | `/patient/register` | `{ name, age, gender, mobileNumber, ... }` |
-| POST | `/patient/login` | `{ mobileNumber }` |
-| POST | `/doctor/login` | `{ email, password }` |
-| POST | `/admin/login` | `{ mobileNumber, password }` |
-| POST | `/logout` | — (requires `Authorization: Bearer <token>` header) |
+| Method | Path | Query Params | Body |
+|---|---|---|---|
+| POST | `/patient/register` | — | `{ name, age, gender, mobileNumber, ... }` |
+| POST | `/login` | `role` (required: `PATIENT`|`DOCTOR`|`ADMIN`) | `{ mobileNumber, password }` |
+| POST | `/logout` | — | — (requires `Authorization` header) |
+
+The 3 previous role-specific login endpoints (`/patient/login`, `/doctor/login`, `/admin/login`) have been **merged into a single `POST /api/auth/login?role=...`** endpoint, dispatching internally to the right role logic based on the `role` query param (invalid/missing role -> 400 `AUTH_INVALID_ROLE`).
 
 Login/register responses return `AuthResponse` `{ token, id, name, role, hospitalId }`.
 
@@ -130,7 +160,8 @@ Login/register responses return `AuthResponse` `{ token, id, name, role, hospita
 
 | Method | Path | Role | Notes |
 |---|---|---|---|
-| GET | `/slots` | All | `doctorId`, `date` — available booking slots |
+| GET | `/slots` | All | `doctorId`, `date` — available booking slots for one doctor |
+| GET | `/slots/today-summary` | Internal (`X-Internal-Token` header, not JWT) | Total available slots **today**, aggregated across all hospitals and doctors — `date`, `totalAvailableSlots`, `totalHospitals`, `totalDoctors` (no per-hospital breakdown) |
 | POST | `/` | PATIENT/ADMIN | Body: `AppointmentRequest` |
 | GET | `/` | All | `status`, `date` (optional), `page`, `size` — scoped to caller |
 | GET | `/{id}` | All (own/hospital-scoped) | — |
@@ -188,9 +219,9 @@ Login/register responses return `AuthResponse` `{ token, id, name, role, hospita
 
 ---
 
-## DTO Generation
+## DTO & API Generation
 
-DTOs are **not** hand-written. They are generated at build time from the OpenAPI spec:
+DTOs **and** the `*Api` controller interfaces are **not** hand-written. Both are generated at build time from the OpenAPI spec via `openapi-generator-maven-plugin`:
 
 ```
 src/main/resources/openapi/healthcare-api.json
@@ -202,8 +233,10 @@ Run generation manually:
 mvn generate-sources
 ```
 
-Generated classes land in `target/generated-sources/openapi/src/main/java/com/healthcare/dto/`.  
-**Do not edit generated files** — edit the JSON spec instead and regenerate.
+Generated classes land in `target/generated-sources/openapi/src/main/java/com/healthcare/{dto,api}/`.
+**Do not edit generated files** — edit the JSON spec instead and regenerate. Every operation in the spec has an explicit `operationId`, which becomes the generated Java method name; interfaces are grouped by the OpenAPI `tags` field (`useTags=true`) into one `*Api` per domain (`AuthApi`, `AppointmentsApi`, `HospitalsApi`, `PatientsApi`, `PmrApi`, `DoctorsApi`, `DocumentsApi`, `NotificationsApi`). `interfaceOnly=true` + `skipDefaultInterface=true` mean generated interfaces have no default (501) method bodies, so every operation **must** be implemented by a matching `*ApiImpl` class in `com.healthcare.api`.
+
+> **Note:** don't re-declare `@Valid`/`@NotNull`/etc. on `*ApiImpl` `@Override` method parameters — the generated interface already carries those constraint annotations, and redeclaring them on the overriding method throws `jakarta.validation.ConstraintDeclarationException` (HV000151) at runtime.
 
 ---
 

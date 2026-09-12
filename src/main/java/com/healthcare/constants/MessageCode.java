@@ -19,6 +19,8 @@ public enum MessageCode {
     AUTH_TOKEN_INVALID("AUTH_TOKEN_INVALID", "Authentication token is invalid or expired"),
     AUTH_UNAUTHORIZED("AUTH_UNAUTHORIZED", "You are not authorized to perform this action"),
     AUTH_LOGOUT_SUCCESS("AUTH_LOGOUT_SUCCESS", "Logout successful"),
+    AUTH_INVALID_ROLE("AUTH_INVALID_ROLE", "Invalid role. Must be PATIENT, DOCTOR, or ADMIN"),
+    AUTH_INTERNAL_TOKEN_INVALID("AUTH_INTERNAL_TOKEN_INVALID", "Missing or invalid internal token"),
 
     // Generic routing
     ENDPOINT_NOT_FOUND("ENDPOINT_NOT_FOUND", "The requested endpoint does not exist"),
@@ -45,6 +47,7 @@ public enum MessageCode {
     APPOINTMENT_FETCHED("APPOINTMENT_FETCHED", "Appointment fetched successfully"),
     APPOINTMENT_STATUS_UPDATED("APPOINTMENT_STATUS_UPDATED", "Appointment status updated successfully"),
     APPOINTMENT_SLOTS_FETCHED("APPOINTMENT_SLOTS_FETCHED", "Available slots fetched successfully"),
+    APPOINTMENT_SLOTS_SUMMARY_FETCHED("APPOINTMENT_SLOTS_SUMMARY_FETCHED", "Today's available slots summary fetched successfully"),
     APPOINTMENT_NOT_FOUND("APPOINTMENT_NOT_FOUND", "Appointment not found"),
     APPOINTMENT_SLOT_UNAVAILABLE("APPOINTMENT_SLOT_UNAVAILABLE", "The requested appointment slot is already booked"),
     APPOINTMENT_SLOT_INVALID("APPOINTMENT_SLOT_INVALID", "The requested slot does not match any valid schedule slot"),

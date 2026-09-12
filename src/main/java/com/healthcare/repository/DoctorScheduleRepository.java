@@ -14,6 +14,8 @@ public interface DoctorScheduleRepository extends JpaRepository<DoctorSchedule, 
 
     List<DoctorSchedule> findByDoctorIdAndDayOfWeekAndIsActiveTrue(Long doctorId, Integer dayOfWeek);
 
+    List<DoctorSchedule> findByDayOfWeekAndIsActiveTrue(Integer dayOfWeek);
+
     List<DoctorSchedule> findByDoctorId(Long doctorId);
 
     Optional<DoctorSchedule> findByDoctorIdAndDayOfWeekAndSessionType(Long doctorId, Integer dayOfWeek, String sessionType);

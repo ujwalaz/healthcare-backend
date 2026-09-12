@@ -89,6 +89,64 @@ public class AppointmentService {
         return slots;
     }
 
+    @Transactional(readOnly = true)
+    public TodaySlotsSummaryResponse getTodaySlotsSummary() {
+        LocalDate today = LocalDate.now();
+        int dayOfWeekIndex = today.getDayOfWeek().getValue() - 1; // 0=Mon..6=Sun
+
+        List<DoctorSchedule> schedules = scheduleRepository.findByDayOfWeekAndIsActiveTrue(dayOfWeekIndex);
+        if (schedules.isEmpty()) {
+            return new TodaySlotsSummaryResponse()
+                    .date(today).totalAvailableSlots(0).totalHospitals(0).totalDoctors(0);
+        }
+
+        Set<Long> doctorIds = schedules.stream().map(DoctorSchedule::getDoctorId).collect(Collectors.toSet());
+        List<Doctor> activeDoctors = doctorRepository.findAllById(doctorIds).stream()
+                .filter(Doctor::getIsActive)
+                .toList();
+        Set<Long> activeDoctorIds = activeDoctors.stream().map(Doctor::getId).collect(Collectors.toSet());
+
+        List<Appointment> bookedToday = appointmentRepository.findByAppointmentDate(Date.valueOf(today));
+        java.util.Map<Long, Set<LocalTime>> bookedByDoctor = bookedToday.stream()
+                .collect(Collectors.groupingBy(Appointment::getDoctorId,
+                        Collectors.mapping(a -> a.getStartTime().toLocalTime(), Collectors.toSet())));
+
+        java.util.Map<Long, List<DoctorSchedule>> schedulesByDoctor = schedules.stream()
+                .filter(s -> activeDoctorIds.contains(s.getDoctorId()))
+                .collect(Collectors.groupingBy(DoctorSchedule::getDoctorId));
+
+        Set<Long> hospitalIds = activeDoctors.stream()
+                .filter(d -> schedulesByDoctor.containsKey(d.getId()))
+                .map(Doctor::getHospitalId)
+                .collect(Collectors.toSet());
+
+        int totalAvailableSlots = 0;
+        for (var entry : schedulesByDoctor.entrySet()) {
+            Set<LocalTime> bookedTimes = bookedByDoctor.getOrDefault(entry.getKey(), Set.of());
+            for (DoctorSchedule session : entry.getValue()) {
+                LocalTime current = session.getStartTime().toLocalTime();
+                LocalTime end = session.getEndTime().toLocalTime();
+                int slotMins = session.getSlotDurationMinutes();
+                while (!current.plusMinutes(slotMins).isAfter(end)) {
+                    if (!bookedTimes.contains(current)) {
+                        totalAvailableSlots++;
+                    }
+                    current = current.plusMinutes(slotMins);
+                }
+            }
+        }
+
+        log.info("Today's slot summary: totalAvailableSlots={}, totalHospitals={}, totalDoctors={}",
+                totalAvailableSlots, hospitalIds.size(), schedulesByDoctor.size());
+
+        return new TodaySlotsSummaryResponse()
+                .date(today)
+                .totalAvailableSlots(totalAvailableSlots)
+                .totalHospitals(hospitalIds.size())
+                .totalDoctors(schedulesByDoctor.size());
+    }
+
+
     @Transactional
     public AppointmentResponse bookAppointment(AppointmentRequest req, JwtClaims caller) {
         Long patientId;
