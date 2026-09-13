@@ -11,16 +11,30 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Set;
 
 /**
- * Guards internal-only endpoints (e.g. the cross-hospital today-slots-summary dashboard feed)
- * with a static shared-secret header instead of a per-user JWT. Requests to a guarded path
- * without a matching {@code X-Internal-Token} header are rejected before reaching Spring Security's
- * normal authentication/authorization chain.
+ * Guards/augments endpoints with a static shared-secret {@code X-Internal-Token} header instead of
+ * (or in addition to) a per-user JWT.
+ *
+ * <p>Two modes are supported, matched by exact path + method:
+ * <ul>
+ *   <li><b>Internal-only</b> ({@link #INTERNAL_ONLY_PATHS}): the header is <b>required</b>.
+ *       Requests without a valid header are rejected here, before reaching Spring Security's
+ *       normal authentication chain (e.g. the cross-hospital today-slots-summary dashboard feed).</li>
+ *   <li><b>Internal-or-JWT</b> ({@link #INTERNAL_OR_JWT_PATHS}): the header is <b>optional</b>.
+ *       If present and valid, the request is authenticated here (bypassing JWT) with a synthetic
+ *       {@code ROLE_INTERNAL} principal. If absent/invalid, the request simply falls through to the
+ *       normal JWT-based authentication/authorization chain — i.e. a valid JWT still works.</li>
+ * </ul>
  */
 @Component
 @Slf4j
@@ -28,7 +42,13 @@ public class InternalTokenFilter extends OncePerRequestFilter {
 
     public static final String HEADER_NAME = "X-Internal-Token";
 
-    private static final String GUARDED_PATH = "/api/appointments/slots/today-summary";
+    private static final Set<String> INTERNAL_ONLY_PATHS = Set.of(
+            "/api/appointments/slots/today-summary"
+    );
+
+    private static final Set<String> INTERNAL_OR_JWT_PATHS = Set.of(
+            "/api/doctors"
+    );
 
     private final String expectedToken;
     private final ObjectMapper objectMapper;
@@ -43,23 +63,35 @@ public class InternalTokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                      HttpServletResponse response,
                                      FilterChain filterChain) throws ServletException, IOException {
-        if (!isGuarded(request)) {
+        if (!HttpMethod.GET.matches(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = request.getHeader(HEADER_NAME);
-        if (token == null || !token.equals(expectedToken)) {
-            log.warn("Rejected request to {} — missing or invalid {} header", request.getRequestURI(), HEADER_NAME);
-            writeUnauthorized(response);
+        String path = request.getRequestURI();
+        boolean hasValidToken = expectedToken.equals(request.getHeader(HEADER_NAME));
+
+        if (INTERNAL_ONLY_PATHS.contains(path)) {
+            if (!hasValidToken) {
+                log.warn("Rejected request to {} — missing or invalid {} header", path, HEADER_NAME);
+                writeUnauthorized(response);
+                return;
+            }
+            filterChain.doFilter(request, response);
             return;
+        }
+
+        if (INTERNAL_OR_JWT_PATHS.contains(path) && hasValidToken) {
+            authenticateAsInternal();
         }
 
         filterChain.doFilter(request, response);
     }
 
-    private boolean isGuarded(HttpServletRequest request) {
-        return HttpMethod.GET.matches(request.getMethod()) && GUARDED_PATH.equals(request.getRequestURI());
+    private void authenticateAsInternal() {
+        var authentication = new UsernamePasswordAuthenticationToken(
+                "internal", null, List.of(new SimpleGrantedAuthority("ROLE_INTERNAL")));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
     private void writeUnauthorized(HttpServletResponse response) throws IOException {
