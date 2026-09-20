@@ -13,7 +13,6 @@ import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.AppointmentService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -53,7 +52,7 @@ public class AppointmentsApiImpl implements AppointmentsApi {
     @ApiMessage(MessageCode.APPOINTMENT_FETCHED)
     public ResponseEntity<AppointmentSummaryPagedResponse> getAppointments(String status, LocalDate date, Integer page, Integer size) {
         JwtClaims caller = SecurityUtils.getCurrentClaims();
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationUtils.of(page, size);
         PagedResponse<com.healthcare.dto.AppointmentSummaryResponse> paged =
                 appointmentService.getAppointments(status, date, pageable, caller);
         return ResponseEntity.ok(toPaged(paged));

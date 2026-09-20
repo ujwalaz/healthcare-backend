@@ -13,6 +13,8 @@ import com.healthcare.exception.AppDeniedException;
 import com.healthcare.exception.ResourceNotFoundException;
 import com.healthcare.repository.AppointmentRepository;
 import com.healthcare.repository.DocumentRepository;
+import com.healthcare.repository.HospitalRepository;
+import com.healthcare.repository.PatientRepository;
 import com.healthcare.security.JwtClaims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -36,8 +39,13 @@ import java.util.UUID;
 @Slf4j
 public class DocumentService {
 
+    private static final Set<String> ALLOWED_DOCUMENT_TYPES = Set.of(
+            "BILL", "PRESCRIPTION", "REPORT", "DOCTOR_NOTE", "PREVIOUS_RECORD");
+
     private final DocumentRepository documentRepository;
     private final AppointmentRepository appointmentRepository;
+    private final PatientRepository patientRepository;
+    private final HospitalRepository hospitalRepository;
     private final BlobServiceClient blobServiceClient;
 
     @Value("${app.azure.storage.container-name}")
@@ -55,6 +63,25 @@ public class DocumentService {
     @Transactional
     public DocumentResponse upload(MultipartFile file, Long patientId, Long hospitalId,
                                    Long appointmentId, String documentType, JwtClaims caller) {
+        if (file == null || file.isEmpty() || patientId == null || hospitalId == null ||
+                !ALLOWED_DOCUMENT_TYPES.contains(documentType)) {
+            throw new AppDeniedException(MessageCode.VALIDATION_FAILED,
+                    "File, patientId, hospitalId, and a valid documentType are required");
+        }
+        if (!patientRepository.existsById(patientId)) {
+            throw new ResourceNotFoundException(MessageCode.PATIENT_NOT_FOUND);
+        }
+        if (!hospitalRepository.existsById(hospitalId)) {
+            throw new ResourceNotFoundException(MessageCode.HOSPITAL_NOT_FOUND);
+        }
+        if (appointmentId != null) {
+            Appointment appointment = appointmentRepository.findById(appointmentId)
+                    .orElseThrow(() -> new ResourceNotFoundException(MessageCode.APPOINTMENT_NOT_FOUND));
+            if (!patientId.equals(appointment.getPatientId()) || !hospitalId.equals(appointment.getHospitalId())) {
+                throw new AppDeniedException(MessageCode.VALIDATION_FAILED,
+                        "Appointment does not belong to the supplied patient and hospital");
+            }
+        }
         if ("PATIENT".equals(caller.role())) {
             if (!caller.userId().equals(patientId)) {
                 throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED,
@@ -144,6 +171,10 @@ public class DocumentService {
                 throw new AppDeniedException(MessageCode.DOCUMENT_ACCESS_DENIED);
             }
         } else if ("DOCTOR".equals(caller.role())) {
+            if (!"PATIENT".equals(document.getUploadedByRole())) {
+                throw new AppDeniedException(MessageCode.DOCUMENT_ACCESS_DENIED,
+                        "Doctors can only access patient-uploaded documents");
+            }
             verifyDoctorDocumentAccess(caller.userId(), document.getPatientId());
         } else {
             throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED);

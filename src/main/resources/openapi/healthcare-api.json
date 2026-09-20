@@ -71,7 +71,7 @@
         "operationId": "logout",
         "summary": "Log out the current user by invalidating the JWT",
         "parameters": [
-          { "name": "Authorization", "in": "header", "required": true, "schema": { "type": "string" }, "description": "Bearer token, e.g. 'Bearer <jwt>'" }
+          { "name": "Authorization", "in": "header", "schema": { "type": "string" }, "description": "Bearer token, e.g. 'Bearer <jwt>'" }
         ],
         "responses": {
           "200": { "description": "Logged out successfully" }
@@ -1101,21 +1101,7 @@
           "date": { "type": "string", "format": "date", "example": "2026-09-12" },
           "totalAvailableSlots": { "type": "integer", "example": 128 },
           "totalHospitals": { "type": "integer", "example": 4 },
-          "totalDoctors": { "type": "integer", "example": 22 },
-          "hospitals": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/HospitalSlotsSummary" }
-          }
-        }
-      },
-      "HospitalSlotsSummary": {
-        "type": "object",
-        "description": "Available slot count for a single hospital, part of the today-summary breakdown.",
-        "properties": {
-          "hospitalId": { "type": "integer", "format": "int64", "example": 1 },
-          "hospitalName": { "type": "string", "example": "City Care Hospital" },
-          "doctorCount": { "type": "integer", "example": 5 },
-          "availableSlots": { "type": "integer", "example": 34 }
+          "totalDoctors": { "type": "integer", "example": 22 }
         }
       },
       "StatusUpdateRequest": {

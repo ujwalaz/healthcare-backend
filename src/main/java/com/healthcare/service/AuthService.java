@@ -15,6 +15,7 @@ import com.healthcare.security.JwtUtil;
 import com.healthcare.security.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,10 +85,10 @@ public class AuthService {
 
     private AuthResponse loginPatient(LoginRequest request) {
         Patient patient = patientRepository.findByMobileNumber(request.getMobileNumber())
-                .orElseThrow(() -> new ResourceNotFoundException(MessageCode.PATIENT_NOT_FOUND));
+                .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_INVALID_CREDENTIALS));
 
         if (!passwordEncoder.matches(request.getPassword(), patient.getPasswordHash())) {
-            throw new ResourceNotFoundException(MessageCode.AUTH_INVALID_CREDENTIALS);
+            throw new BadRequestException(MessageCode.AUTH_INVALID_CREDENTIALS);
         }
 
         log.info("Patient login successful for id={}", patient.getId());
@@ -101,10 +102,10 @@ public class AuthService {
 
     private AuthResponse loginDoctor(LoginRequest request) {
         Doctor doctor = doctorRepository.findByPhone(request.getMobileNumber())
-                .orElseThrow(() -> new ResourceNotFoundException(MessageCode.DOCTOR_NOT_FOUND));
+                .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_INVALID_CREDENTIALS));
 
         if (!passwordEncoder.matches(request.getPassword(), doctor.getPasswordHash())) {
-            throw new ResourceNotFoundException(MessageCode.AUTH_INVALID_CREDENTIALS);
+            throw new BadRequestException(MessageCode.AUTH_INVALID_CREDENTIALS);
         }
 
         if (!Boolean.TRUE.equals(doctor.getIsActive())) {
@@ -150,7 +151,7 @@ public class AuthService {
     @Transactional
     public void logout(String token) {
         if (!jwtUtil.validateToken(token)) {
-            throw new ResourceNotFoundException(MessageCode.AUTH_TOKEN_INVALID);
+            throw new BadCredentialsException("Authentication token is invalid or expired");
         }
         String jti = jwtUtil.extractJti(token);
         java.util.Date expiration = jwtUtil.extractExpiration(token);

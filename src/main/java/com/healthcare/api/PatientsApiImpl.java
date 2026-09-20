@@ -11,7 +11,6 @@ import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.PatientService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -52,7 +51,7 @@ public class PatientsApiImpl implements PatientsApi {
     @ApiMessage(MessageCode.PATIENT_FETCHED)
     public ResponseEntity<PatientSummaryPagedResponse> searchPatients(String query, Integer page, Integer size) {
         SecurityUtils.requireRole("ADMIN");
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationUtils.of(page, size);
         PagedResponse<PatientSummaryResponse> paged = patientService.searchPatients(query, pageable);
         PatientSummaryPagedResponse response = new PatientSummaryPagedResponse()
                 .content(paged.getContent())

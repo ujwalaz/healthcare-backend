@@ -13,7 +13,6 @@ import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.DoctorService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,7 +29,7 @@ public class DoctorsApiImpl implements DoctorsApi {
     @Override
     @ApiMessage(MessageCode.DOCTOR_FETCHED)
     public ResponseEntity<DoctorSummaryPagedResponse> getDoctors(Long hospitalId, Integer page, Integer size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationUtils.of(page, size);
         PagedResponse<DoctorSummaryResponse> paged = doctorService.getDoctors(hospitalId, pageable);
         DoctorSummaryPagedResponse response = new DoctorSummaryPagedResponse()
                 .content(paged.getContent())

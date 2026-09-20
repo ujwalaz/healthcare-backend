@@ -13,7 +13,6 @@ import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.NotificationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +28,7 @@ public class NotificationsApiImpl implements NotificationsApi {
     @ApiMessage(MessageCode.NOTIFICATION_FETCHED)
     public ResponseEntity<NotificationPagedResponse> getMyNotifications(Boolean isRead, Integer page, Integer size) {
         JwtClaims caller = SecurityUtils.getCurrentClaims();
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationUtils.of(page, size);
         PagedResponse<NotificationResponse> paged = notificationService.getMyNotifications(isRead, pageable, caller);
         NotificationPagedResponse response = new NotificationPagedResponse()
                 .content(paged.getContent())

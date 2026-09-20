@@ -60,7 +60,8 @@ public class PmrService {
         PatientMedicalRecord pmr = pmrRepository.findByPatientIdAndHospitalId(patientId, resolvedHospitalId)
                 .orElseThrow(() -> new ResourceNotFoundException(MessageCode.PMR_NOT_FOUND));
 
-        Page<PmrEntry> page = pmrEntryRepository.findByPmrId(pmr.getId(), pageable);
+        Page<PmrEntryRepository.PmrEntryProjection> page = pmrEntryRepository
+                .findProjectedByPmrId(pmr.getId(), pageable);
         Page<PmrEntryResponse> responsePage = page.map(this::toPmrEntryResponse);
         return PagedResponse.from(responsePage);
     }
@@ -156,6 +157,20 @@ public class PmrService {
                 .id(entry.getId())
                 .doctorId(entry.getDoctorId())
                 .doctorName(doctor != null ? doctor.getName() : "Unknown")
+                .appointmentId(entry.getAppointmentId())
+                .entryDate(entry.getEntryDate() != null ? entry.getEntryDate().toLocalDate() : null)
+                .diagnosis(entry.getDiagnosis())
+                .symptoms(entry.getSymptoms())
+                .treatmentPlan(entry.getTreatmentPlan())
+                .doctorNotes(entry.getDoctorNotes())
+                .createdAt(toOffsetDateTime(entry.getCreatedAt()));
+    }
+
+    private PmrEntryResponse toPmrEntryResponse(PmrEntryRepository.PmrEntryProjection entry) {
+        return new PmrEntryResponse()
+                .id(entry.getId())
+                .doctorId(entry.getDoctorId())
+                .doctorName(entry.getDoctorName())
                 .appointmentId(entry.getAppointmentId())
                 .entryDate(entry.getEntryDate() != null ? entry.getEntryDate().toLocalDate() : null)
                 .diagnosis(entry.getDiagnosis())

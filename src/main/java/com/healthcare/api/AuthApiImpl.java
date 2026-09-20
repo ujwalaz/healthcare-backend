@@ -7,8 +7,10 @@ import com.healthcare.dto.LoginRequest;
 import com.healthcare.dto.PatientRegisterRequest;
 import com.healthcare.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,7 +35,12 @@ public class AuthApiImpl implements AuthApi {
 
     @Override
     public ResponseEntity<Void> logout(String authorization) {
-        String token = authorization.startsWith("Bearer ") ? authorization.substring(7) : authorization;
+        if (!StringUtils.hasText(authorization) || !authorization.startsWith("Bearer ")
+                || authorization.length() <= 7 || !StringUtils.hasText(authorization.substring(7))) {
+            throw new BadCredentialsException("Authorization header with a Bearer token is required");
+        }
+
+        String token = authorization.substring(7).trim();
         authService.logout(token);
         return ResponseEntity.ok().build();
     }

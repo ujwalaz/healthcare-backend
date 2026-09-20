@@ -11,7 +11,6 @@ import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.PmrService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +34,7 @@ public class PmrApiImpl implements PmrApi {
     @ApiMessage(MessageCode.PMR_ENTRIES_FETCHED)
     public ResponseEntity<PmrEntryPagedResponse> getPmrEntries(Long patientId, Long hospitalId, Integer page, Integer size) {
         JwtClaims caller = SecurityUtils.getCurrentClaims();
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationUtils.of(page, size);
         PagedResponse<PmrEntryResponse> paged = pmrService.getPmrEntries(patientId, hospitalId, pageable, caller);
         PmrEntryPagedResponse response = new PmrEntryPagedResponse()
                 .content(paged.getContent())

@@ -11,7 +11,6 @@ import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.DocumentService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +37,7 @@ public class DocumentsApiImpl implements DocumentsApi {
     public ResponseEntity<DocumentSummaryPagedResponse> getPatientDocuments(Long patientId, String documentType,
                                                                              Long appointmentId, Integer page, Integer size) {
         JwtClaims caller = SecurityUtils.getCurrentClaims();
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PaginationUtils.of(page, size);
         PagedResponse<DocumentSummaryResponse> paged =
                 documentService.getDocuments(patientId, documentType, appointmentId, pageable, caller);
         DocumentSummaryPagedResponse response = new DocumentSummaryPagedResponse()

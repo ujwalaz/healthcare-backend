@@ -52,8 +52,11 @@ public class AppointmentService {
 
     @Transactional(readOnly = true)
     public List<SlotResponse> getAvailableSlots(Long doctorId, LocalDate date) {
-        if (!doctorRepository.existsById(doctorId)) {
-            throw new ResourceNotFoundException(MessageCode.DOCTOR_NOT_FOUND);
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new ResourceNotFoundException(MessageCode.DOCTOR_NOT_FOUND));
+        if (!Boolean.TRUE.equals(doctor.getIsActive())) {
+            throw new ConflictException(MessageCode.APPOINTMENT_SLOT_INVALID,
+                    "Appointments are not available for an inactive doctor");
         }
 
         int dayOfWeekIndex = date.getDayOfWeek().getValue() - 1; // 0=Mon..6=Sun
@@ -264,22 +267,18 @@ public class AppointmentService {
         Long doctorId = "DOCTOR".equals(caller.role()) ? caller.userId() : null;
         Long hospitalId = "ADMIN".equals(caller.role()) ? caller.hospitalId() : null;
 
-        Page<Appointment> page = appointmentRepository.findWithFilters(
+        Page<AppointmentRepository.AppointmentSummaryProjection> page = appointmentRepository.findWithFilters(
                 patientId, doctorId, hospitalId, status, date != null ? Date.valueOf(date) : null, pageable);
 
-        Page<AppointmentSummaryResponse> responsePage = page.map(a -> {
-            Patient patient = patientRepository.findById(a.getPatientId()).orElse(null);
-            Doctor doctor = doctorRepository.findById(a.getDoctorId()).orElse(null);
-            return new AppointmentSummaryResponse()
-                    .id(a.getId())
-                    .patientName(patient != null ? patient.getName() : "Unknown")
-                    .doctorName(doctor != null ? doctor.getName() : "Unknown")
-                    .appointmentDate(a.getAppointmentDate().toLocalDate())
-                    .startTime(a.getStartTime().toLocalTime())
-                    .endTime(a.getEndTime().toLocalTime())
-                    .status(a.getStatus())
-                    .isOffline(a.getIsOffline());
-        });
+        Page<AppointmentSummaryResponse> responsePage = page.map(a -> new AppointmentSummaryResponse()
+                .id(a.getId())
+                .patientName(a.getPatientName())
+                .doctorName(a.getDoctorName())
+                .appointmentDate(a.getAppointmentDate().toLocalDate())
+                .startTime(a.getStartTime().toLocalTime())
+                .endTime(a.getEndTime().toLocalTime())
+                .status(a.getStatus())
+                .isOffline(a.getIsOffline()));
 
         return PagedResponse.from(responsePage);
     }
