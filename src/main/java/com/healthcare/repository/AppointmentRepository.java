@@ -32,19 +32,39 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     boolean existsByDoctorIdAndAppointmentDateAndStartTime(Long doctorId, Date date, Time startTime);
 
-    @Query("SELECT a FROM Appointment a WHERE " +
+    @Query(value = "SELECT a.id AS id, p.name AS patientName, d.name AS doctorName, " +
+           "a.appointmentDate AS appointmentDate, a.startTime AS startTime, a.endTime AS endTime, " +
+           "a.status AS status, a.isOffline AS isOffline " +
+           "FROM Appointment a JOIN Patient p ON p.id = a.patientId JOIN Doctor d ON d.id = a.doctorId WHERE " +
+           "(:patientId IS NULL OR a.patientId = :patientId) AND " +
+           "(:doctorId IS NULL OR a.doctorId = :doctorId) AND " +
+           "(:hospitalId IS NULL OR a.hospitalId = :hospitalId) AND " +
+           "(:status IS NULL OR a.status = :status) AND " +
+           "(:date IS NULL OR a.appointmentDate = :date)",
+           countQuery = "SELECT COUNT(a) FROM Appointment a WHERE " +
            "(:patientId IS NULL OR a.patientId = :patientId) AND " +
            "(:doctorId IS NULL OR a.doctorId = :doctorId) AND " +
            "(:hospitalId IS NULL OR a.hospitalId = :hospitalId) AND " +
            "(:status IS NULL OR a.status = :status) AND " +
            "(:date IS NULL OR a.appointmentDate = :date)")
-    Page<Appointment> findWithFilters(
+    Page<AppointmentSummaryProjection> findWithFilters(
             @Param("patientId") Long patientId,
             @Param("doctorId") Long doctorId,
             @Param("hospitalId") Long hospitalId,
             @Param("status") String status,
             @Param("date") Date date,
             Pageable pageable);
+
+    interface AppointmentSummaryProjection {
+        Long getId();
+        String getPatientName();
+        String getDoctorName();
+        Date getAppointmentDate();
+        Time getStartTime();
+        Time getEndTime();
+        String getStatus();
+        Boolean getIsOffline();
+    }
 
     @Query("SELECT a FROM Appointment a WHERE a.doctorId = :doctorId AND a.patientId = :patientId " +
            "AND a.status IN ('SCHEDULED', 'COMPLETED')")
