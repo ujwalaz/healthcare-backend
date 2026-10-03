@@ -1,0 +1,44 @@
+##Primary target sector for now - Out Patient Department
+
+#Basic flow of the website/app/software
+- Creating the patient profile 
+- Appointment booking and managing the same. 
+- Save and manage the patent medical report files, appointment date time and bills
+- Access and update the Patient Medical Record(PMR).
+- notification for further appointment and report updates
+
+#3 main users of the webapp 
+
+ 1.Patient 
+ - Creating Patient profile
+ - OTP authentication for access ( We can add AADHAR authentication later on )  
+ - Upload any Previous Medical Record and have sole access of PMR
+ - View and Access Hospital Profile and Basic data 
+ - Booking an appointment - Offline - by direct calling the hospital 
+                          - Online - thru our webpage/app by selecting the available slots for a particular date.
+ - Once booked, can view and manage the appointment
+ - View and download all hospital bills, prescription, any doctor notes, diagnostic tests prescription and reports.
+ - Receives Follow up and reminder for the upcoming appointments 
+
+ 2.Nursing Desk 
+ - Access the patient profile.
+ - Book the appointment for any patient.
+ - Update and notify the patient profile about the appointment
+ - Recieve the Doctor notes, prescribed medication from the Doctor
+ - Upload all the bills, prescriptions, any doctors notes (as mentioned above), diagnostic tests prescription and reports.
+ - NO ACCESS to PMR only can upload any updates in the PMR
+
+ 3.Doctor
+ - Access to the patient profile
+ - Access to the PMR and Update it if required. 
+ - Access to the PMR should be limited( only during the appointment time period) 
+ - Can Send the doctor notes and any prescription to the nursing desk
+ 
+## Entities
+- Hospital - name, address
+- Doctor - name, education, 
+- Admin(recepition) - mobilenumber, associate to hospital
+- Patient - Name, Age(mandatory), Gender(mandatory), DOB, Mobile Number(mandatory), Email Id (optional)
+- doctor_schedule - doctorId , availability for appointments
+- appointments - patientId, time , doctor id
+- Reports - pateientId, reportFileId
