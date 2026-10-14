@@ -1,5 +1,8 @@
 package com.healthcare.security;
 
+import com.healthcare.repository.AdminUserRepository;
+import com.healthcare.repository.DoctorRepository;
+import com.healthcare.repository.PatientRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +27,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
+    private final PatientRepository patientRepository;
+    private final DoctorRepository doctorRepository;
+    private final AdminUserRepository adminUserRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -35,7 +41,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             try {
                 String jti = jwtUtil.extractJti(token);
                 if (tokenBlacklistService.isRevoked(jti)) {
-                    log.warn("Rejected revoked JWT (jti={})", jti);
+                    log.warn("Rejected revoked JWT");
                     filterChain.doFilter(request, response);
                     return;
                 }
@@ -43,6 +49,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 Long userId = jwtUtil.extractUserId(token);
                 String role = jwtUtil.extractRole(token);
                 Long hospitalId = jwtUtil.extractHospitalId(token);
+                Integer tokenPasswordVersion = jwtUtil.extractPasswordVersion(token);
+
+                if (tokenPasswordVersion != null && !isCurrentPasswordVersion(userId, role, tokenPasswordVersion)) {
+                    log.warn("Rejected JWT issued before password reset for userId={}, role={}", userId, role);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 JwtClaims claims = new JwtClaims(userId, role, hospitalId);
 
@@ -60,6 +73,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isCurrentPasswordVersion(Long userId, String role, Integer tokenVersion) {
+        return switch (role) {
+            case "PATIENT" -> patientRepository.findById(userId)
+                    .map(account -> tokenVersion.equals(account.getPasswordVersion())).orElse(false);
+            case "DOCTOR" -> doctorRepository.findById(userId)
+                    .map(account -> tokenVersion.equals(account.getPasswordVersion())).orElse(false);
+            case "ADMIN" -> adminUserRepository.findById(userId)
+                    .map(account -> tokenVersion.equals(account.getPasswordVersion())).orElse(false);
+            default -> false;
+        };
     }
 
     private String extractToken(HttpServletRequest request) {

@@ -37,6 +37,15 @@ public class Patient {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    @Column(name = "security_question_id")
+    private Long securityQuestionId;
+
+    @Column(name = "security_answer_hash")
+    private String securityAnswerHash;
+
+    @Column(name = "password_version", nullable = false)
+    private Integer passwordVersion;
+
     @Column(name = "address")
     private String address;
 

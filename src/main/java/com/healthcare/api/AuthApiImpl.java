@@ -5,6 +5,10 @@ import com.healthcare.constants.MessageCode;
 import com.healthcare.dto.AuthResponse;
 import com.healthcare.dto.LoginRequest;
 import com.healthcare.dto.PatientRegisterRequest;
+import com.healthcare.dto.PasswordResetCompleteRequest;
+import com.healthcare.dto.PasswordResetTokenResponse;
+import com.healthcare.dto.PasswordResetVerifyRequest;
+import com.healthcare.dto.SecurityQuestionResponse;
 import com.healthcare.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -12,6 +16,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -43,5 +50,34 @@ public class AuthApiImpl implements AuthApi {
         String token = authorization.substring(7).trim();
         authService.logout(token);
         return ResponseEntity.ok().build();
+    }
+
+    @Override
+    @ApiMessage(MessageCode.AUTH_RESET_QUESTIONS_FETCHED)
+    public ResponseEntity<List<SecurityQuestionResponse>> getPasswordResetQuestions() {
+        List<SecurityQuestionResponse> questions = authService.getPasswordResetQuestions().stream()
+                .map(question -> new SecurityQuestionResponse()
+                        .id(question.getId())
+                        .question(question.getQuestionText()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(questions);
+    }
+
+    @Override
+    @ApiMessage(MessageCode.AUTH_RESET_TOKEN_ISSUED)
+    public ResponseEntity<PasswordResetTokenResponse> verifyPasswordResetAnswer(
+            PasswordResetVerifyRequest request) {
+        AuthService.PasswordResetResult result = authService.verifyPasswordResetAnswer(
+                request.getRole().getValue(), request.getIdentifier(), request.getQuestionId(), request.getAnswer());
+        return ResponseEntity.ok(new PasswordResetTokenResponse()
+                .resetToken(result.resetToken())
+                .expiresAt(result.expiresAt()));
+    }
+
+    @Override
+    @ApiMessage(MessageCode.AUTH_RESET_COMPLETED)
+    public ResponseEntity<Void> completePasswordReset(PasswordResetCompleteRequest request) {
+        authService.completePasswordReset(request.getResetToken(), request.getNewPassword());
+        return ResponseEntity.noContent().build();
     }
 }

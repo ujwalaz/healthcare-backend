@@ -65,6 +65,69 @@
         }
       }
     },
+    "/api/auth/password-reset/questions": {
+      "get": {
+        "tags": ["Auth"],
+        "operationId": "getPasswordResetQuestions",
+        "summary": "List active password reset security questions",
+        "responses": {
+          "200": {
+            "description": "Security questions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/SecurityQuestionResponse" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password-reset/verify": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "verifyPasswordResetAnswer",
+        "summary": "Verify a selected security question and answer",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PasswordResetVerifyRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset token issued",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PasswordResetTokenResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password-reset/complete": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "completePasswordReset",
+        "summary": "Set a new password using a reset token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PasswordResetCompleteRequest" }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Password reset completed" }
+        }
+      }
+    },
     "/api/auth/logout": {
       "post": {
         "tags": ["Auth"],
@@ -734,6 +797,40 @@
   },
   "components": {
     "schemas": {
+      "SecurityQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "question": { "type": "string" }
+        },
+        "required": ["id", "question"]
+      },
+      "PasswordResetVerifyRequest": {
+        "type": "object",
+        "properties": {
+          "role": { "type": "string", "enum": ["PATIENT", "DOCTOR", "ADMIN"] },
+          "identifier": { "type": "string", "minLength": 1, "maxLength": 20 },
+          "questionId": { "type": "integer", "format": "int64" },
+          "answer": { "type": "string", "minLength": 1, "maxLength": 255 }
+        },
+        "required": ["role", "identifier", "questionId", "answer"]
+      },
+      "PasswordResetTokenResponse": {
+        "type": "object",
+        "properties": {
+          "resetToken": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["resetToken", "expiresAt"]
+      },
+      "PasswordResetCompleteRequest": {
+        "type": "object",
+        "properties": {
+          "resetToken": { "type": "string", "minLength": 1 },
+          "newPassword": { "type": "string", "minLength": 8, "maxLength": 128 }
+        },
+        "required": ["resetToken", "newPassword"]
+      },
       "AuthResponse": {
         "type": "object",
         "description": "Authentication response containing the JWT and caller identity information.",
@@ -839,6 +936,17 @@
             "description": "Patient account password (min 8 characters).",
             "example": "Secret@123"
           },
+          "securityQuestionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Selected security question identifier."
+          },
+          "securityAnswer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Answer to the selected security question."
+          },
           "address": {
             "type": "string",
             "description": "Patient residential address.",
@@ -867,7 +975,9 @@
           "gender",
           "dob",
           "mobileNumber",
-          "password"
+          "password",
+          "securityQuestionId",
+          "securityAnswer"
         ]
       },
       "AppointmentRequest": {

@@ -35,7 +35,10 @@ public class ApiLoggingFilter extends OncePerRequestFilter {
 
     private static final int MAX_BODY_LOG_LENGTH = 2000;
     private static final Pattern SENSITIVE_FIELD_PATTERN = Pattern.compile(
-            "(\"(?:password|token|secret|authorization)\"\\s*:\\s*)\"[^\"]*\"",
+            "(\"(?:password|newPassword|passwordHash|token|resetToken|secret|authorization|securityAnswer|answer)\"\\s*:\\s*)\"[^\"]*\"",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern SENSITIVE_QUERY_PARAMETER_PATTERN = Pattern.compile(
+            "((?:password|newPassword|token|resetToken|secret|authorization|securityAnswer|answer)=)[^&]*",
             Pattern.CASE_INSENSITIVE);
 
     @Override
@@ -48,7 +51,8 @@ public class ApiLoggingFilter extends OncePerRequestFilter {
         HttpServletRequest requestToUse = isMultipart ? request : new CachedBodyHttpServletRequest(request);
         ContentCachingResponseWrapper responseToUse = new ContentCachingResponseWrapper(response);
 
-        String queryString = StringUtils.hasText(request.getQueryString()) ? "?" + request.getQueryString() : "";
+        String queryString = StringUtils.hasText(request.getQueryString())
+                ? "?" + maskQueryString(request.getQueryString()) : "";
         String requestBody = isMultipart
                 ? "[multipart upload - body not logged]"
                 : mask(new String(((CachedBodyHttpServletRequest) requestToUse).getCachedBody(), StandardCharsets.UTF_8));
@@ -73,6 +77,10 @@ public class ApiLoggingFilter extends OncePerRequestFilter {
             return body;
         }
         return SENSITIVE_FIELD_PATTERN.matcher(body).replaceAll("$1\"***\"");
+    }
+
+    private String maskQueryString(String queryString) {
+        return SENSITIVE_QUERY_PARAMETER_PATTERN.matcher(queryString).replaceAll("$1***");
     }
 
     private String truncate(String body) {

@@ -21,6 +21,10 @@ public enum MessageCode {
     AUTH_LOGOUT_SUCCESS("AUTH_LOGOUT_SUCCESS", "Logout successful"),
     AUTH_INVALID_ROLE("AUTH_INVALID_ROLE", "Invalid role. Must be PATIENT, DOCTOR, or ADMIN"),
     AUTH_INTERNAL_TOKEN_INVALID("AUTH_INTERNAL_TOKEN_INVALID", "Missing or invalid internal token"),
+    AUTH_RESET_INVALID("AUTH_RESET_INVALID", "Password reset details are invalid or expired"),
+    AUTH_RESET_QUESTIONS_FETCHED("AUTH_RESET_QUESTIONS_FETCHED", "Password reset questions fetched successfully"),
+    AUTH_RESET_TOKEN_ISSUED("AUTH_RESET_TOKEN_ISSUED", "Password reset verification successful"),
+    AUTH_RESET_COMPLETED("AUTH_RESET_COMPLETED", "Password reset completed successfully"),
 
     // Generic routing
     ENDPOINT_NOT_FOUND("ENDPOINT_NOT_FOUND", "The requested endpoint does not exist"),

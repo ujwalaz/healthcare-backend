@@ -1,47 +1,11 @@
 {
   "info": {
+    "_postman_id": "1b03aefa-7538-45b3-9edf-0241b9b52fa4",
     "name": "Healthcare Backend API",
     "description": "Generated from src/main/resources/openapi/healthcare-api.json",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "30036291"
   },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8080"
-    },
-    {
-      "key": "jwt",
-      "value": ""
-    },
-    {
-      "key": "internalToken",
-      "value": ""
-    },
-    {
-      "key": "id",
-      "value": "1"
-    },
-    {
-      "key": "doctorId",
-      "value": "1"
-    },
-    {
-      "key": "hospitalId",
-      "value": "1"
-    },
-    {
-      "key": "patientId",
-      "value": "1"
-    },
-    {
-      "key": "appointmentId",
-      "value": "1"
-    },
-    {
-      "key": "documentId",
-      "value": "1"
-    }
-  ],
   "item": [
     {
       "name": "Auth",
@@ -56,6 +20,15 @@
                 "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+            "raw": "{\n  \"name\": \"Ujjwala Zope\",\n  \"gender\": \"FEMALE\",\n  \"dob\": \"1995-01-01\",\n  \"mobileNumber\": \"8551002220\",\n  \"email\": \"ujjwala@example.com\",\n  \"password\": \"Secret@123\",\n  \"securityQuestionId\": 1,\n  \"securityAnswer\": \"St. Mary's School\",\n  \"address\": \"12 MG Road, Bangalore\",\n  \"emergencyContactNumber\": \"9876500000\",\n  \"bloodGroup\": \"B-\",\n  \"permanentIllness\": \"High BP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{baseUrl}}/api/auth/patient/register",
               "host": [
@@ -66,23 +39,36 @@
                 "auth",
                 "patient",
                 "register"
-              ],
-              "query": []
-            },
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Asha Patil\",\n  \"gender\": \"FEMALE\",\n  \"dob\": \"1992-08-15\",\n  \"mobileNumber\": \"9876543210\",\n  \"email\": \"asha.patil@example.com\",\n  \"password\": \"Secret@123\",\n  \"address\": \"12 MG Road, Pune, MH\",\n  \"emergencyContactNumber\": \"9876500000\",\n  \"bloodGroup\": \"O+\",\n  \"permanentIllness\": \"Type 2 Diabetes\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              ]
             }
-          }
+          },
+          "response": []
         },
         {
-          "name": "Log in as a patient, doctor, or admin using mobile number and password",
+          "name": "Log in as a patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the response body\r",
+                  "let response = pm.response.json();\r",
+                  "\r",
+                  "// Check if access_token exists in the response\r",
+                  "if (response.data.token) {\r",
+                  "    // Set access_token as an environment variable\r",
+                  "    pm.environment.set(\"jwt\", response.data.token);\r",
+                  "    console.log(\"Access token set in environment variables.\");\r",
+                  "} else {\r",
+                  "    console.warn(\"access_token not found in response.\");\r",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -91,8 +77,17 @@
                 "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobileNumber\": \"8551002227\",\n  \"password\": \"Test@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
-              "raw": "{{baseUrl}}/api/auth/login",
+              "raw": "{{baseUrl}}/api/auth/login?role=patient",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -104,28 +99,88 @@
               "query": [
                 {
                   "key": "role",
-                  "value": "",
-                  "disabled": false
+                  "value": "patient"
                 }
               ]
             },
-            "description": "The 'role' query parameter selects which login is performed (PATIENT, DOCTOR, or ADMIN). All three roles authenticate with the same mobileNumber + password payload shape.",
+            "description": "The 'role' query parameter selects which login is performed (PATIENT, DOCTOR, or ADMIN). All three roles authenticate with the same mobileNumber + password payload shape."
+          },
+          "response": []
+        },
+        {
+          "name": "Log in as a  doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the response body\r",
+                  "let response = pm.response.json();\r",
+                  "\r",
+                  "// Check if access_token exists in the response\r",
+                  "if (response.data.token) {\r",
+                  "    // Set access_token as an environment variable\r",
+                  "    pm.environment.set(\"jwt\", response.data.token);\r",
+                  "    console.log(\"Access token set in environment variables.\");\r",
+                  "} else {\r",
+                  "    console.warn(\"access_token not found in response.\");\r",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"mobileNumber\": \"9876543210\",\n  \"password\": \"Secret@123\"\n}",
+              "raw": "{\n  \"mobileNumber\": \"9901001001\",\n  \"password\": \"doctor@123\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            }
-          }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login?role=doctor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "doctor"
+                }
+              ]
+            },
+            "description": "The 'role' query parameter selects which login is performed (PATIENT, DOCTOR, or ADMIN). All three roles authenticate with the same mobileNumber + password payload shape."
+          },
+          "response": []
         },
         {
           "name": "Log out the current user by invalidating the JWT",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJlZmRkMTVlZi03MjQyLTRlMjQtOThlMC00M2ZjZjY0Njc1YWQiLCJzdWIiOiIxNiIsInJvbGUiOiJQQVRJRU5UIiwiaWF0IjoxNzg5ODkyMDMxLCJleHAiOjE3ODk5Nzg0MzF9.iGLBXMACEyWEPNMUDjYfDGyf_dqAuV_79lXu3cSzbx8",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/auth/logout",
               "host": [
@@ -135,11 +190,10 @@
                 "api",
                 "auth",
                 "logout"
-              ],
-              "query": []
-            },
-            "description": ""
-          }
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -149,10 +203,26 @@
         {
           "name": "Get available slots for a doctor on a given date",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJmMTBmOTgwMi04ZGZiLTQxZjUtOTA4Zi05MzZkYTBjMWJkYTkiLCJzdWIiOiIxNiIsInJvbGUiOiJQQVRJRU5UIiwiaWF0IjoxNzg5OTIyNzIzLCJleHAiOjE3OTAwMDkxMjN9.VW6RqedB81Nfha_cme-ledTrmPk1gsgLB1p1OmA0kmA",
+                "type": "text"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/api/appointments/slots",
+              "raw": "{{baseUrl}}/api/appointments/slots?doctorId=3&date=2026-09-20",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -164,28 +234,16 @@
               "query": [
                 {
                   "key": "doctorId",
-                  "value": "",
-                  "disabled": false
+                  "value": "3"
                 },
                 {
                   "key": "date",
-                  "value": "",
-                  "disabled": false
-                }
-              ]
-            },
-            "description": "",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt}}",
-                  "type": "string"
+                  "value": "2026-09-20"
                 }
               ]
             }
-          }
+          },
+          "response": []
         },
         {
           "name": "Get total available appointment slots for today across all hospitals and doctors",
@@ -207,43 +265,15 @@
                 "appointments",
                 "slots",
                 "today-summary"
-              ],
-              "query": []
+              ]
             },
             "description": "Aggregates today's remaining (unbooked) schedule slots for every active doctor in every hospital, with a per-hospital breakdown."
-          }
+          },
+          "response": []
         },
         {
           "name": "Book an appointment",
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/appointments",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "appointments"
-              ],
-              "query": []
-            },
-            "description": "PATIENT books for self (patientId resolved from JWT if omitted). ADMIN books on behalf of a patient at their hospital.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patientId\": 201,\n  \"doctorId\": 301,\n  \"hospitalId\": 12,\n  \"appointmentDate\": \"2026-07-01\",\n  \"startTime\": \"10:30:00\",\n  \"isOffline\": false,\n  \"notes\": \"Follow-up visit for migraine symptoms\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -253,14 +283,51 @@
                   "type": "string"
                 }
               ]
-            }
-          }
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": 2,\n  \"doctorId\": 1,\n  \"hospitalId\": 1,\n  \"appointmentDate\": \"2026-09-21\",\n  \"startTime\": \"10:30:00\",\n  \"isOffline\": false,\n  \"notes\": \"Follow-up visit for migraine symptoms\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "PATIENT books for self (patientId resolved from JWT if omitted). ADMIN books on behalf of a patient at their hospital."
+          },
+          "response": []
         },
         {
           "name": "List appointments for the current user",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/appointments",
               "host": [
@@ -293,7 +360,13 @@
                 }
               ]
             },
-            "description": "PATIENT sees own appointments. DOCTOR sees own appointments. ADMIN sees appointments for their hospital.",
+            "description": "PATIENT sees own appointments. DOCTOR sees own appointments. ADMIN sees appointments for their hospital."
+          },
+          "response": []
+        },
+        {
+          "name": "Get an appointment by id",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -303,12 +376,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Get an appointment by id",
-          "request": {
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -320,10 +388,14 @@
                 "api",
                 "appointments",
                 "{{id}}"
-              ],
-              "query": []
-            },
-            "description": "",
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update the status of an appointment",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -333,12 +405,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Update the status of an appointment",
-          "request": {
+            },
             "method": "PATCH",
             "header": [
               {
@@ -346,6 +413,15 @@
                 "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELLED\",\n  \"notes\": \"Patient requested cancellation\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{baseUrl}}/api/appointments/{{id}}/status",
               "host": [
@@ -356,30 +432,11 @@
                 "appointments",
                 "{{id}}",
                 "status"
-              ],
-              "query": []
-            },
-            "description": "ADMIN and PATIENT (own appointments) can update status, e.g. cancel or complete.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"CANCELLED\",\n  \"notes\": \"Patient requested cancellation\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt}}",
-                  "type": "string"
-                }
               ]
-            }
-          }
+            },
+            "description": "ADMIN and PATIENT (own appointments) can update status, e.g. cancel or complete."
+          },
+          "response": []
         }
       ]
     },
@@ -412,9 +469,9 @@
                   "disabled": true
                 }
               ]
-            },
-            "description": ""
-          }
+            }
+          },
+          "response": []
         },
         {
           "name": "Get hospital details by id",
@@ -430,11 +487,10 @@
                 "api",
                 "hospitals",
                 "{{id}}"
-              ],
-              "query": []
-            },
-            "description": ""
-          }
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -444,6 +500,16 @@
         {
           "name": "Get the current patient's own profile",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -455,10 +521,15 @@
                 "api",
                 "patients",
                 "profile"
-              ],
-              "query": []
+              ]
             },
-            "description": "PATIENT only.",
+            "description": "PATIENT only."
+          },
+          "response": []
+        },
+        {
+          "name": "Update the current patient's own profile",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -468,12 +539,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Update the current patient's own profile",
-          "request": {
+            },
             "method": "PUT",
             "header": [
               {
@@ -481,6 +547,15 @@
                 "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n // \"name\": \"Asha P. Patil\",\n  //\"dob\": \"1991-08-15\",\n  //\"email\": \"asha.new@example.com\",\n  \"address\": \"12 MG Road, Pune, MH\",\n  \"emergencyContactNumber\": \"9876500000\"\n//  \"bloodGroup\": \"O+\",\n//  \"permanentIllness\": \"Type 2 Diabetes\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{baseUrl}}/api/patients/profile",
               "host": [
@@ -490,19 +565,15 @@
                 "api",
                 "patients",
                 "profile"
-              ],
-              "query": []
+              ]
             },
-            "description": "PATIENT only.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Asha P. Patil\",\n  \"dob\": \"1991-08-15\",\n  \"email\": \"asha.new@example.com\",\n  \"address\": \"12 MG Road, Pune, MH\",\n  \"emergencyContactNumber\": \"9876500000\",\n  \"bloodGroup\": \"O+\",\n  \"permanentIllness\": \"Type 2 Diabetes\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
+            "description": "PATIENT only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get a patient by id",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -512,12 +583,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Get a patient by id",
-          "request": {
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -529,10 +595,15 @@
                 "api",
                 "patients",
                 "{{id}}"
-              ],
-              "query": []
+              ]
             },
-            "description": "ADMIN or DOCTOR only.",
+            "description": "ADMIN or DOCTOR only."
+          },
+          "response": []
+        },
+        {
+          "name": "Search patients",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -542,16 +613,11 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Search patients",
-          "request": {
+            },
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/patients/search",
+              "raw": "{{baseUrl}}/api/patients/search?query=Ujjwala",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -563,8 +629,7 @@
               "query": [
                 {
                   "key": "query",
-                  "value": "",
-                  "disabled": true
+                  "value": "Ujjwala"
                 },
                 {
                   "key": "page",
@@ -578,18 +643,9 @@
                 }
               ]
             },
-            "description": "ADMIN only.",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
+            "description": "ADMIN only."
+          },
+          "response": []
         }
       ]
     },
@@ -599,10 +655,20 @@
         {
           "name": "Get a patient's PMR summary",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/pmr/patient/{{patientId}}",
+              "raw": "{{baseUrl}}/api/pmr/patient/{{patientId}}?hospitalId=1",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -615,12 +681,17 @@
               "query": [
                 {
                   "key": "hospitalId",
-                  "value": "",
-                  "disabled": true
+                  "value": "1"
                 }
               ]
             },
-            "description": "PATIENT (own only). DOCTOR access requires an active appointment window with the patient. ADMIN has no PMR access.",
+            "description": "PATIENT (own only). DOCTOR access requires an active appointment window with the patient. ADMIN has no PMR access."
+          },
+          "response": []
+        },
+        {
+          "name": "List PMR entries for a patient",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -630,12 +701,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "List PMR entries for a patient",
-          "request": {
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -668,7 +734,13 @@
                 }
               ]
             },
-            "description": "PATIENT (own only). DOCTOR access requires an active appointment window with the patient. ADMIN has no PMR access.",
+            "description": "PATIENT (own only). DOCTOR access requires an active appointment window with the patient. ADMIN has no PMR access."
+          },
+          "response": []
+        },
+        {
+          "name": "Add a PMR entry for a patient",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -678,12 +750,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Add a PMR entry for a patient",
-          "request": {
+            },
             "method": "POST",
             "header": [
               {
@@ -691,6 +758,15 @@
                 "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appointmentId\": 501,\n  \"entryDate\": \"2026-07-01\",\n  \"diagnosis\": \"Migraine without aura\",\n  \"symptoms\": \"Headache, nausea\",\n  \"treatmentPlan\": \"Prescribe triptans and hydration\",\n  \"doctorNotes\": \"Review after two weeks\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{baseUrl}}/api/pmr/patient/{{patientId}}/entry",
               "host": [
@@ -711,27 +787,9 @@
                 }
               ]
             },
-            "description": "DOCTOR only, and only during an active appointment window with the patient.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"appointmentId\": 501,\n  \"entryDate\": \"2026-07-01\",\n  \"diagnosis\": \"Migraine without aura\",\n  \"symptoms\": \"Headache, nausea\",\n  \"treatmentPlan\": \"Prescribe triptans and hydration\",\n  \"doctorNotes\": \"Review after two weeks\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
+            "description": "DOCTOR only, and only during an active appointment window with the patient."
+          },
+          "response": []
         }
       ]
     },
@@ -741,6 +799,16 @@
         {
           "name": "List doctors, optionally filtered by hospital",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -769,8 +837,13 @@
                   "disabled": true
                 }
               ]
-            },
-            "description": "",
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get doctor details by id",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -780,12 +853,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Get doctor details by id",
-          "request": {
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -797,10 +865,14 @@
                 "api",
                 "doctors",
                 "{{id}}"
-              ],
-              "query": []
-            },
-            "description": "",
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get a doctor's weekly recurring schedule",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -810,12 +882,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Get a doctor's weekly recurring schedule",
-          "request": {
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -828,10 +895,14 @@
                 "doctors",
                 "{{id}}",
                 "schedule"
-              ],
-              "query": []
-            },
-            "description": "",
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save a doctor's weekly recurring schedule",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -841,12 +912,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Save a doctor's weekly recurring schedule",
-          "request": {
+            },
             "method": "POST",
             "header": [
               {
@@ -854,20 +920,6 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/doctors/{{id}}/schedule",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "doctors",
-                "{{id}}",
-                "schedule"
-              ],
-              "query": []
-            },
-            "description": "One schedule row per doctor per weekday (day_of_week 0=Mon ... 6=Sun).",
             "body": {
               "mode": "raw",
               "raw": "[\n  {\n    \"dayOfWeek\": 0,\n    \"startTime\": \"09:00:00\",\n    \"endTime\": \"13:00:00\",\n    \"slotDurationMinutes\": 15,\n    \"sessionType\": \"MORNING\"\n  }\n]",
@@ -877,6 +929,25 @@
                 }
               }
             },
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/{{id}}/schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctors",
+                "{{id}}",
+                "schedule"
+              ]
+            },
+            "description": "One schedule row per doctor per weekday (day_of_week 0=Mon ... 6=Sun)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get a doctor's calendar availability between two dates",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -886,16 +957,11 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Get a doctor's calendar availability between two dates",
-          "request": {
+            },
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/doctors/{{id}}/calendar",
+              "raw": "{{baseUrl}}/api/doctors/{{id}}/calendar?from=&to=",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -908,28 +974,16 @@
               "query": [
                 {
                   "key": "from",
-                  "value": "",
-                  "disabled": false
+                  "value": ""
                 },
                 {
                   "key": "to",
-                  "value": "",
-                  "disabled": false
-                }
-              ]
-            },
-            "description": "",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt}}",
-                  "type": "string"
+                  "value": ""
                 }
               ]
             }
-          }
+          },
+          "response": []
         }
       ]
     },
@@ -939,51 +993,6 @@
         {
           "name": "Upload a document",
           "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/documents/upload",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "documents",
-                "upload"
-              ],
-              "query": []
-            },
-            "description": "PATIENT may upload PREVIOUS_RECORD type only (for themselves). ADMIN may upload any type for their hospital.",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "patientId",
-                  "type": "text",
-                  "src": "1"
-                },
-                {
-                  "key": "hospitalId",
-                  "type": "text",
-                  "src": "1"
-                },
-                {
-                  "key": "appointmentId",
-                  "type": "text",
-                  "src": "1"
-                },
-                {
-                  "key": "documentType",
-                  "type": "text",
-                  "src": "BILL"
-                }
-              ]
-            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -993,12 +1002,71 @@
                   "type": "string"
                 }
               ]
-            }
-          }
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/C:/Users/ujjwala.zope/OneDrive - Pine Labs Private Limited/Personal/Form19.pdf"
+                },
+                {
+                  "key": "patientId",
+                  "type": "text",
+                  "src": "1",
+                  "value": "13"
+                },
+                {
+                  "key": "hospitalId",
+                  "type": "text",
+                  "src": "1",
+                  "value": "1"
+                },
+                {
+                  "key": "appointmentId",
+                  "type": "text",
+                  "src": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "documentType",
+                  "type": "text",
+                  "src": "BILL",
+                  "value": "PREVIOUS_RECORD"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "documents",
+                "upload"
+              ]
+            },
+            "description": "PATIENT may upload PREVIOUS_RECORD type only (for themselves). ADMIN may upload any type for their hospital."
+          },
+          "response": []
         },
         {
           "name": "List documents for a patient",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -1035,7 +1103,13 @@
                 }
               ]
             },
-            "description": "PATIENT sees own visible documents. ADMIN sees all for their hospital. DOCTOR sees patient-uploaded documents within the appointment time window.",
+            "description": "PATIENT sees own visible documents. ADMIN sees all for their hospital. DOCTOR sees patient-uploaded documents within the appointment time window."
+          },
+          "response": []
+        },
+        {
+          "name": "Get a SAS download URL for a document",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1045,12 +1119,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Get a SAS download URL for a document",
-          "request": {
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -1063,10 +1132,14 @@
                 "documents",
                 "{{id}}",
                 "download"
-              ],
-              "query": []
-            },
-            "description": "",
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Soft-delete a document (ADMIN only)",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1076,12 +1149,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Soft-delete a document (ADMIN only)",
-          "request": {
+            },
             "method": "DELETE",
             "header": [],
             "url": {
@@ -1093,21 +1161,10 @@
                 "api",
                 "documents",
                 "{{id}}"
-              ],
-              "query": []
-            },
-            "description": "",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt}}",
-                  "type": "string"
-                }
               ]
             }
-          }
+          },
+          "response": []
         }
       ]
     },
@@ -1117,6 +1174,16 @@
         {
           "name": "Get notifications for the current user",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -1146,8 +1213,13 @@
                   "disabled": true
                 }
               ]
-            },
-            "description": "",
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get unread notification count for the current user",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1157,12 +1229,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Get unread notification count for the current user",
-          "request": {
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -1174,10 +1241,14 @@
                 "api",
                 "notifications",
                 "unread-count"
-              ],
-              "query": []
-            },
-            "description": "",
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark all notifications as read for the current user",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1187,12 +1258,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Mark all notifications as read for the current user",
-          "request": {
+            },
             "method": "PATCH",
             "header": [],
             "url": {
@@ -1204,10 +1270,14 @@
                 "api",
                 "notifications",
                 "read-all"
-              ],
-              "query": []
-            },
-            "description": "",
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark a single notification as read",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1217,12 +1287,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Mark a single notification as read",
-          "request": {
+            },
             "method": "PATCH",
             "header": [],
             "url": {
@@ -1235,10 +1300,14 @@
                 "notifications",
                 "{{id}}",
                 "read"
-              ],
-              "query": []
-            },
-            "description": "",
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send a notification (ADMIN only)",
+          "request": {
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1248,12 +1317,7 @@
                   "type": "string"
                 }
               ]
-            }
-          }
-        },
-        {
-          "name": "Send a notification (ADMIN only)",
-          "request": {
+            },
             "method": "POST",
             "header": [
               {
@@ -1261,18 +1325,6 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/api/notifications",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "notifications"
-              ],
-              "query": []
-            },
-            "description": "",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"recipientUserType\": \"PATIENT\",\n  \"recipientId\": 201,\n  \"title\": \"Appointment Reminder\",\n  \"message\": \"Your appointment is scheduled for tomorrow at 10:30 AM.\"\n}",
@@ -1282,20 +1334,172 @@
                 }
               }
             },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{jwt}}",
-                  "type": "string"
-                }
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
               ]
             }
-          }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Password Reset",
+      "item": [
+        {
+          "name": "List password reset security questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/password-reset/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "password-reset",
+                "questions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify security question answer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data?.resetToken) {",
+                  "    pm.collectionVariables.set('resetToken', body.data.resetToken);",
+                  "    console.log('Reset token saved to the collection variables.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"PATIENT\",\n  \"identifier\": \"8551002220\",\n  \"questionId\": 1,\n  \"answer\": \"St. Mary's School\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/password-reset/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "password-reset",
+                "verify"
+              ]
+            },
+            "description": "Use role PATIENT, DOCTOR, or ADMIN. Identifier is the registered mobile number for patients/admins and phone number for doctors. The answer is normalized case-insensitively by the backend."
+          },
+          "response": []
+        },
+        {
+          "name": "Complete password reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resetToken\": \"{{resetToken}}\",\n  \"newPassword\": \"NewSecret@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/password-reset/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "password-reset",
+                "complete"
+              ]
+            },
+            "description": "Run after Verify security question answer. The reset token is one-time and expires after 10 minutes."
+          },
+          "response": []
         }
       ]
     }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "jwt",
+      "value": ""
+    },
+    {
+      "key": "resetToken",
+      "value": ""
+    },
+    {
+      "key": "internalToken",
+      "value": ""
+    },
+    {
+      "key": "id",
+      "value": "1"
+    },
+    {
+      "key": "doctorId",
+      "value": "1"
+    },
+    {
+      "key": "hospitalId",
+      "value": "1"
+    },
+    {
+      "key": "patientId",
+      "value": "1"
+    },
+    {
+      "key": "appointmentId",
+      "value": "1"
+    },
+    {
+      "key": "documentId",
+      "value": "1"
+    }
   ]
 }
-
