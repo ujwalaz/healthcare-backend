@@ -40,7 +40,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
            "(:doctorId IS NULL OR a.doctorId = :doctorId) AND " +
            "(:hospitalId IS NULL OR a.hospitalId = :hospitalId) AND " +
            "(:status IS NULL OR a.status = :status) AND " +
-           "(:date IS NULL OR a.appointmentDate = :date)",
+           "(:date IS NULL OR a.appointmentDate = :date) " +
+           "ORDER BY a.appointmentDate ASC, a.startTime ASC",
            countQuery = "SELECT COUNT(a) FROM Appointment a WHERE " +
            "(:patientId IS NULL OR a.patientId = :patientId) AND " +
            "(:doctorId IS NULL OR a.doctorId = :doctorId) AND " +
