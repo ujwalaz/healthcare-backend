@@ -34,6 +34,8 @@ public enum MessageCode {
     PATIENT_PROFILE_UPDATED("PATIENT_PROFILE_UPDATED", "Patient profile updated successfully"),
     PATIENT_NOT_FOUND("PATIENT_NOT_FOUND", "Patient not found"),
     PATIENT_MOBILE_EXISTS("PATIENT_MOBILE_EXISTS", "A patient with this mobile number already exists"),
+    DOCTOR_EMAIL_EXISTS("DOCTOR_EMAIL_EXISTS", "A doctor with this email already exists"),
+    DOCTOR_PHONE_EXISTS("DOCTOR_PHONE_EXISTS", "A doctor with this phone number already exists"),
 
     // Hospital
     HOSPITAL_FETCHED("HOSPITAL_FETCHED", "Hospital fetched successfully"),
@@ -41,10 +43,17 @@ public enum MessageCode {
 
     // Doctor
     DOCTOR_FETCHED("DOCTOR_FETCHED", "Doctor fetched successfully"),
+    DOCTOR_PROFILE_UPDATED("DOCTOR_PROFILE_UPDATED", "Doctor profile updated successfully"),
     DOCTOR_NOT_FOUND("DOCTOR_NOT_FOUND", "Doctor not found"),
     DOCTOR_SCHEDULE_FETCHED("DOCTOR_SCHEDULE_FETCHED", "Doctor schedule fetched successfully"),
     DOCTOR_SCHEDULE_SAVED("DOCTOR_SCHEDULE_SAVED", "Doctor schedule saved successfully"),
     DOCTOR_CALENDAR_FETCHED("DOCTOR_CALENDAR_FETCHED", "Doctor calendar fetched successfully"),
+
+    // Admin profile
+    ADMIN_PROFILE_FETCHED("ADMIN_PROFILE_FETCHED", "Admin profile fetched successfully"),
+    ADMIN_PROFILE_UPDATED("ADMIN_PROFILE_UPDATED", "Admin profile updated successfully"),
+    ADMIN_EMAIL_EXISTS("ADMIN_EMAIL_EXISTS", "An admin with this email already exists"),
+    ADMIN_NOT_FOUND("ADMIN_NOT_FOUND", "Admin account not found"),
 
     // Appointment
     APPOINTMENT_BOOKED("APPOINTMENT_BOOKED", "Appointment booked successfully"),

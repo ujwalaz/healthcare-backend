@@ -141,6 +141,48 @@
         }
       }
     },
+    "/api/admin/profile": {
+      "get": {
+        "tags": ["Admin"],
+        "operationId": "getAdminProfile",
+        "summary": "Get the current admin's own profile",
+        "description": "ADMIN only.",
+        "responses": {
+          "200": {
+            "description": "Admin profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminProfileResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Admin"],
+        "operationId": "updateAdminProfile",
+        "summary": "Update the current admin's own profile",
+        "description": "ADMIN only. All request fields are optional. Hospital, role, active status, password, mobile number, and security-question fields cannot be updated.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminProfileUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Admin profile updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminProfileResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/appointments/slots": {
       "get": {
         "tags": ["Appointments"],
@@ -499,6 +541,48 @@
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/DoctorSummaryPagedResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/doctors/profile": {
+      "get": {
+        "tags": ["Doctors"],
+        "operationId": "getDoctorProfile",
+        "summary": "Get the current doctor's own profile",
+        "description": "DOCTOR only. Degree, experience, and specialty are read-only.",
+        "responses": {
+          "200": {
+            "description": "Doctor profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DoctorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Doctors"],
+        "operationId": "updateDoctorProfile",
+        "summary": "Update the current doctor's own profile",
+        "description": "DOCTOR only. All request fields are optional. Degree, experience, specialty, hospital, active status, password, and security-question fields cannot be updated.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DoctorProfileUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Doctor profile updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DoctorResponse" }
               }
             }
           }
@@ -939,13 +1023,14 @@
           "securityQuestionId": {
             "type": "integer",
             "format": "int64",
-            "description": "Selected security question identifier."
+            "minimum": 1,
+            "description": "Selected active security question identifier (required)."
           },
           "securityAnswer": {
             "type": "string",
             "minLength": 1,
             "maxLength": 255,
-            "description": "Answer to the selected security question."
+            "description": "Answer to the selected security question (required and non-empty)."
           },
           "address": {
             "type": "string",
@@ -1467,6 +1552,61 @@
             }
           }
         ]
+      },
+      "DoctorProfileUpdateRequest": {
+        "type": "object",
+        "description": "Optional fields for updating the current doctor's profile. Degree, experience, and specialty are intentionally excluded.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Updated doctor name."
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^[0-9]{10}$",
+            "description": "Updated doctor phone number."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Updated doctor email address."
+          }
+        },
+        "minProperties": 1
+      },
+      "AdminProfileResponse": {
+        "type": "object",
+        "description": "Admin profile response without sensitive credentials.",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "description": "Admin identifier." },
+          "name": { "type": "string", "description": "Admin name." },
+          "mobileNumber": { "type": "string", "description": "Admin mobile number." },
+          "email": { "type": "string", "format": "email", "nullable": true, "description": "Admin email address." },
+          "hospitalId": { "type": "integer", "format": "int64", "description": "Admin hospital identifier." },
+          "role": { "type": "string", "description": "Admin role." },
+          "isActive": { "type": "boolean", "description": "Whether the admin account is active." },
+          "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp." }
+        }
+      },
+      "AdminProfileUpdateRequest": {
+        "type": "object",
+        "description": "Optional fields for updating the current admin's profile. Mobile number, hospital, role, and security fields are intentionally excluded.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Updated admin name."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Updated admin email address."
+          }
+        },
+        "minProperties": 1
       },
       "DoctorResponse": {
         "type": "object",

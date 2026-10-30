@@ -871,6 +871,59 @@
           "response": []
         },
         {
+          "name": "Get my doctor profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "doctors", "profile"]
+            },
+            "description": "DOCTOR only. Returns degree and specialty as read-only profile information."
+          },
+          "response": []
+        },
+        {
+          "name": "Update my doctor profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"doctor.updated@example.com\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "doctors", "profile"]
+            },
+            "description": "DOCTOR only. All fields are optional; send only name, phone, and/or email. Degree, experience, and specialty cannot be updated."
+          },
+          "response": []
+        },
+        {
           "name": "Get a doctor's weekly recurring schedule",
           "request": {
             "auth": {
@@ -1344,6 +1397,52 @@
                 "notifications"
               ]
             }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get my admin profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{"key": "token", "value": "{{jwt}}", "type": "string"}]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "profile"]
+            },
+            "description": "ADMIN only. Mobile number, hospital, and role are read-only."
+          },
+          "response": []
+        },
+        {
+          "name": "Update my admin profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{"key": "token", "value": "{{jwt}}", "type": "string"}]
+            },
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Administrator\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "profile"]
+            },
+            "description": "ADMIN only. All fields are optional; currently name and email can be updated. Mobile number, hospital, role, password, and security-question fields cannot be updated."
           },
           "response": []
         }

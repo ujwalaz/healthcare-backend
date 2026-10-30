@@ -6,6 +6,7 @@ import com.healthcare.dto.CalendarDayResponse;
 import com.healthcare.dto.DoctorResponse;
 import com.healthcare.dto.DoctorSummaryPagedResponse;
 import com.healthcare.dto.DoctorSummaryResponse;
+import com.healthcare.dto.DoctorProfileUpdateRequest;
 import com.healthcare.dto.PagedResponse;
 import com.healthcare.dto.ScheduleRequest;
 import com.healthcare.dto.ScheduleResponse;
@@ -45,6 +46,22 @@ public class DoctorsApiImpl implements DoctorsApi {
     public ResponseEntity<DoctorResponse> getDoctorById(Long id) {
         DoctorResponse response = doctorService.getDoctorById(id);
         return ResponseEntity.ok(response);
+    }
+
+    @Override
+    @ApiMessage(MessageCode.DOCTOR_FETCHED)
+    public ResponseEntity<DoctorResponse> getDoctorProfile() {
+        JwtClaims caller = SecurityUtils.getCurrentClaims();
+        SecurityUtils.requireRole("DOCTOR");
+        return ResponseEntity.ok(doctorService.getDoctorById(caller.userId()));
+    }
+
+    @Override
+    @ApiMessage(MessageCode.DOCTOR_PROFILE_UPDATED)
+    public ResponseEntity<DoctorResponse> updateDoctorProfile(DoctorProfileUpdateRequest request) {
+        JwtClaims caller = SecurityUtils.getCurrentClaims();
+        SecurityUtils.requireRole("DOCTOR");
+        return ResponseEntity.ok(doctorService.updateProfile(caller.userId(), request));
     }
 
     @Override

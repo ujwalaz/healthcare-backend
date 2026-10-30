@@ -6,6 +6,8 @@ import com.healthcare.entity.Doctor;
 import com.healthcare.entity.DoctorSchedule;
 import com.healthcare.entity.Hospital;
 import com.healthcare.exception.AppDeniedException;
+import com.healthcare.exception.BadRequestException;
+import com.healthcare.exception.ConflictException;
 import com.healthcare.exception.ResourceNotFoundException;
 import com.healthcare.repository.AppointmentRepository;
 import com.healthcare.repository.DoctorRepository;
@@ -69,6 +71,38 @@ public class DoctorService {
                 .hospitalId(doctor.getHospitalId())
                 .hospitalName(hospital.getName())
                 .isActive(doctor.getIsActive());
+    }
+
+    @Transactional
+    public DoctorResponse updateProfile(Long doctorId, DoctorProfileUpdateRequest request) {
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new ResourceNotFoundException(MessageCode.DOCTOR_NOT_FOUND));
+
+        if (request.getName() == null && request.getPhone() == null && request.getEmail() == null) {
+            throw new BadRequestException(MessageCode.VALIDATION_FAILED, "At least one profile field is required");
+        }
+
+        if (request.getName() != null) {
+            doctor.setName(request.getName().trim());
+        }
+        if (request.getPhone() != null && !request.getPhone().equals(doctor.getPhone())) {
+            if (doctorRepository.findByPhone(request.getPhone())
+                    .filter(existing -> !existing.getId().equals(doctorId)).isPresent()) {
+                throw new ConflictException(MessageCode.DOCTOR_PHONE_EXISTS);
+            }
+            doctor.setPhone(request.getPhone());
+        }
+        if (request.getEmail() != null && !request.getEmail().equalsIgnoreCase(doctor.getEmail())) {
+            if (doctorRepository.findByEmail(request.getEmail())
+                    .filter(existing -> !existing.getId().equals(doctorId)).isPresent()) {
+                throw new ConflictException(MessageCode.DOCTOR_EMAIL_EXISTS);
+            }
+            doctor.setEmail(request.getEmail());
+        }
+
+        doctorRepository.save(doctor);
+        log.info("Updated profile for doctorId={}", doctorId);
+        return getDoctorById(doctorId);
     }
 
     @Transactional(readOnly = true)
