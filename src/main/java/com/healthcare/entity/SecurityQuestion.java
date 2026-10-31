@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SecurityQuestion {
+public class SecurityQuestion extends UpdatedAtEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

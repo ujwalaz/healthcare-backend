@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Patient {
+public class Patient extends UpdatedAtEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,7 +25,7 @@ public class Patient {
     @Column(name = "gender", nullable = false)
     private String gender;
 
-    @Column(name = "dob", nullable = false)
+    @Column(name = "dob")
     private Date dob;
 
     @Column(name = "mobile_number", nullable = false)
@@ -34,8 +34,17 @@ public class Patient {
     @Column(name = "email")
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
+
+    @Column(name = "is_registered", nullable = false)
+    private Boolean isRegistered;
+
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @Column(name = "security_question_id")
     private Long securityQuestionId;
@@ -61,18 +70,10 @@ public class Patient {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now();
         if (createdAt == null) createdAt = now;
-        if (updatedAt == null) updatedAt = now;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        if (isDeleted == null) isDeleted = false;
     }
 }

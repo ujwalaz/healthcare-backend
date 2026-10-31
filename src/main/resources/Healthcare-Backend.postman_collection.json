@@ -310,7 +310,50 @@
                 "appointments"
               ]
             },
-            "description": "PATIENT books for self (patientId resolved from JWT if omitted). ADMIN books on behalf of a patient at their hospital."
+            "description": "PATIENT books for self. ADMIN books on behalf of a patient at their hospital. DOCTOR can book on behalf of a patient only with the doctor as the treating doctor at the doctor's hospital."
+          },
+          "response": []
+        },
+        {
+          "name": "Book appointment for an unregistered guest patient",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientName\": \"Guest Patient\",\n  \"patientMobileNumber\": \"8551002220\",\n  \"patientGender\": \"OTHER\",\n  \"patientDob\": \"1995-01-01\",\n  \"doctorId\": 1,\n  \"hospitalId\": 1,\n  \"appointmentDate\": \"2026-09-21\",\n  \"startTime\": \"10:30:00\",\n  \"isOffline\": false,\n  \"notes\": \"First visit\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointments"
+              ]
+            },
+            "description": "ADMIN or DOCTOR only. Omit patientId and provide patientName plus patientMobileNumber to create a guest patient. OTP is intentionally not part of this flow. Later patient registration with the same mobile claims this patient history."
           },
           "response": []
         },
@@ -568,6 +611,36 @@
               ]
             },
             "description": "PATIENT only."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete my patient account (soft delete)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/patients/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "profile"
+              ]
+            },
+            "description": "PATIENT only. Disables the account and invalidates authentication while preserving appointments, medical records, and audit history. Returns 204 No Content."
           },
           "response": []
         },
@@ -924,6 +997,52 @@
           "response": []
         },
         {
+          "name": "Upload or replace my doctor profile picture",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{"key": "token", "value": "{{jwt}}", "type": "string"}]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/profile/picture",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "doctors", "profile", "picture"]
+            },
+            "description": "DOCTOR only. Accepts JPEG, PNG, or WEBP. Uploading a new picture replaces the previous active profile picture."
+          },
+          "response": []
+        },
+        {
+          "name": "Get my doctor profile picture download URL",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{"key": "token", "value": "{{jwt}}", "type": "string"}]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctors/profile/picture",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "doctors", "profile", "picture"]
+            },
+            "description": "DOCTOR only. Returns a short-lived SAS download URL when a profile picture exists."
+          },
+          "response": []
+        },
+        {
           "name": "Get a doctor's weekly recurring schedule",
           "request": {
             "auth": {
@@ -1191,7 +1310,7 @@
           "response": []
         },
         {
-          "name": "Soft-delete a document (ADMIN only)",
+          "name": "Delete a document",
           "request": {
             "auth": {
               "type": "bearer",

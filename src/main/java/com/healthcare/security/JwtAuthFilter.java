@@ -77,7 +77,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private boolean isCurrentPasswordVersion(Long userId, String role, Integer tokenVersion) {
         return switch (role) {
-            case "PATIENT" -> patientRepository.findById(userId)
+            case "PATIENT" -> patientRepository.findByIdAndIsDeletedFalse(userId)
                     .map(account -> tokenVersion.equals(account.getPasswordVersion())).orElse(false);
             case "DOCTOR" -> doctorRepository.findById(userId)
                     .map(account -> tokenVersion.equals(account.getPasswordVersion())).orElse(false);

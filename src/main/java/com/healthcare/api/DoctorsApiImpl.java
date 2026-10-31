@@ -10,13 +10,17 @@ import com.healthcare.dto.DoctorProfileUpdateRequest;
 import com.healthcare.dto.PagedResponse;
 import com.healthcare.dto.ScheduleRequest;
 import com.healthcare.dto.ScheduleResponse;
+import com.healthcare.dto.DocumentResponse;
+import com.healthcare.dto.DownloadUrlResponse;
 import com.healthcare.security.JwtClaims;
 import com.healthcare.security.SecurityUtils;
 import com.healthcare.service.DoctorService;
+import com.healthcare.service.DocumentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -26,6 +30,7 @@ import java.util.List;
 public class DoctorsApiImpl implements DoctorsApi {
 
     private final DoctorService doctorService;
+    private final DocumentService documentService;
 
     @Override
     @ApiMessage(MessageCode.DOCTOR_FETCHED)
@@ -62,6 +67,23 @@ public class DoctorsApiImpl implements DoctorsApi {
         JwtClaims caller = SecurityUtils.getCurrentClaims();
         SecurityUtils.requireRole("DOCTOR");
         return ResponseEntity.ok(doctorService.updateProfile(caller.userId(), request));
+    }
+
+    @Override
+    @ApiMessage(MessageCode.DOCUMENT_UPLOADED)
+    public ResponseEntity<DocumentResponse> uploadDoctorProfilePicture(MultipartFile file) {
+        JwtClaims caller = SecurityUtils.getCurrentClaims();
+        SecurityUtils.requireRole("DOCTOR");
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                .body(documentService.uploadDoctorProfilePicture(file, caller));
+    }
+
+    @Override
+    @ApiMessage(MessageCode.DOCUMENT_DOWNLOAD_URL_READY)
+    public ResponseEntity<DownloadUrlResponse> getDoctorProfilePictureDownloadUrl() {
+        JwtClaims caller = SecurityUtils.getCurrentClaims();
+        SecurityUtils.requireRole("DOCTOR");
+        return ResponseEntity.ok(documentService.getDoctorProfilePictureDownloadUrl(caller.userId(), caller));
     }
 
     @Override

@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DoctorPmrAccessLog {
+public class DoctorPmrAccessLog extends UpdatedAtEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -12,7 +12,7 @@ import java.sql.Time;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DoctorSchedule {
+public class DoctorSchedule extends UpdatedAtEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

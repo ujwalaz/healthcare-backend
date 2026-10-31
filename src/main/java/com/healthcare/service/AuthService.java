@@ -53,30 +53,38 @@ public class AuthService {
 
     @Transactional
     public AuthResponse registerPatient(PatientRegisterRequest request) {
-        if (patientRepository.existsByMobileNumber(request.getMobileNumber())) {
-            throw new ConflictException(MessageCode.PATIENT_MOBILE_EXISTS);
-        }
-
         SecurityQuestion securityQuestion = securityQuestionRepository.findById(request.getSecurityQuestionId())
                 .filter(question -> Boolean.TRUE.equals(question.getIsActive()))
                 .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
 
-        Patient patient = Patient.builder()
-                .name(request.getName())
-                .gender(request.getGender())
-                .dob(Date.valueOf(request.getDob()))
-                .mobileNumber(request.getMobileNumber())
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .securityQuestionId(securityQuestion.getId())
-                .securityAnswerHash(passwordEncoder.encode(normalizeAnswer(request.getSecurityAnswer())))
-                .passwordVersion(0)
-                .address(request.getAddress())
-                .emergencyContactNumber(request.getEmergencyContactNumber())
-                .bloodGroup(request.getBloodGroup() != null ? request.getBloodGroup().getValue() : null)
-                .permanentIllness(request.getPermanentIllness())
-                .createdAt(LocalDateTime.now())
-                .build();
+        Patient patient = patientRepository.findByMobileNumber(request.getMobileNumber()).orElse(null);
+        if (patient != null && Boolean.TRUE.equals(patient.getIsRegistered())) {
+            throw new ConflictException(MessageCode.PATIENT_MOBILE_EXISTS);
+        }
+        if (patient != null && Boolean.TRUE.equals(patient.getIsDeleted())) {
+            throw new ConflictException(MessageCode.PATIENT_MOBILE_EXISTS);
+        }
+        if (patient == null) {
+            patient = Patient.builder()
+                    .mobileNumber(request.getMobileNumber())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+        }
+
+        patient.setName(request.getName());
+        patient.setGender(request.getGender());
+        patient.setDob(Date.valueOf(request.getDob()));
+        patient.setMobileNumber(request.getMobileNumber());
+        patient.setEmail(request.getEmail());
+        patient.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        patient.setSecurityQuestionId(securityQuestion.getId());
+        patient.setSecurityAnswerHash(passwordEncoder.encode(normalizeAnswer(request.getSecurityAnswer())));
+        patient.setPasswordVersion(patient.getPasswordVersion() == null ? 0 : patient.getPasswordVersion());
+        patient.setIsRegistered(true);
+        patient.setAddress(request.getAddress());
+        patient.setEmergencyContactNumber(request.getEmergencyContactNumber());
+        patient.setBloodGroup(request.getBloodGroup() != null ? request.getBloodGroup().getValue() : null);
+        patient.setPermanentIllness(request.getPermanentIllness());
 
         patient = patientRepository.save(patient);
         log.info("Registered new patient with id={}", patient.getId());
@@ -107,7 +115,7 @@ public class AuthService {
     }
 
     private AuthResponse loginPatient(LoginRequest request) {
-        Patient patient = patientRepository.findByMobileNumber(request.getMobileNumber())
+        Patient patient = patientRepository.findByMobileNumberAndIsDeletedFalse(request.getMobileNumber())
                 .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_INVALID_CREDENTIALS));
 
         if (!matchesPassword(request.getPassword(), patient.getPasswordHash())) {
@@ -262,7 +270,7 @@ public class AuthService {
             throw new BadRequestException(MessageCode.AUTH_RESET_INVALID);
         }
         return switch (role) {
-            case "PATIENT" -> patientRepository.findByMobileNumber(identifier)
+            case "PATIENT" -> patientRepository.findByMobileNumberAndIsDeletedFalse(identifier)
                     .map(p -> new Account(p.getId(), p.getSecurityQuestionId(), p.getSecurityAnswerHash()))
                     .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
             case "DOCTOR" -> doctorRepository.findByPhone(identifier)

@@ -40,6 +40,15 @@ public class PatientsApiImpl implements PatientsApi {
     }
 
     @Override
+    @ApiMessage(MessageCode.DELETED)
+    public ResponseEntity<Void> deletePatientAccount() {
+        JwtClaims caller = SecurityUtils.getCurrentClaims();
+        SecurityUtils.requireRole("PATIENT");
+        patientService.deleteAccount(caller.userId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
     @ApiMessage(MessageCode.PATIENT_FETCHED)
     public ResponseEntity<PatientResponse> getPatientById(Long id) {
         SecurityUtils.requireRole("ADMIN", "DOCTOR");
@@ -50,9 +59,12 @@ public class PatientsApiImpl implements PatientsApi {
     @Override
     @ApiMessage(MessageCode.PATIENT_FETCHED)
     public ResponseEntity<PatientSummaryPagedResponse> searchPatients(String query, Integer page, Integer size) {
-        SecurityUtils.requireRole("ADMIN");
+        JwtClaims caller = SecurityUtils.getCurrentClaims();
+        SecurityUtils.requireRole("ADMIN", "DOCTOR");
         Pageable pageable = PaginationUtils.of(page, size);
-        PagedResponse<PatientSummaryResponse> paged = patientService.searchPatients(query, pageable);
+        PagedResponse<PatientSummaryResponse> paged = "DOCTOR".equals(caller.role())
+                ? patientService.searchPatientsForHospital(query, caller.hospitalId(), pageable)
+                : patientService.searchPatients(query, pageable);
         PatientSummaryPagedResponse response = new PatientSummaryPagedResponse()
                 .content(paged.getContent())
                 .page(paged.getPage())

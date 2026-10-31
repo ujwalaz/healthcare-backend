@@ -156,14 +156,21 @@ public class AppointmentService {
         if ("PATIENT".equals(caller.role())) {
             patientId = caller.userId();
         } else if ("ADMIN".equals(caller.role())) {
-            if (req.getPatientId() == null) {
-                throw new AppDeniedException(MessageCode.VALIDATION_FAILED, "Patient ID is required");
-            }
             if (!caller.hospitalId().equals(req.getHospitalId())) {
                 throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED,
                         "Admin can only book appointments in their hospital");
             }
-            patientId = req.getPatientId();
+            patientId = resolveBookedPatient(req);
+        } else if ("DOCTOR".equals(caller.role())) {
+            if (!caller.userId().equals(req.getDoctorId())) {
+                throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED,
+                        "Doctors can only book appointments with themselves as the treating doctor");
+            }
+            if (caller.hospitalId() == null || !caller.hospitalId().equals(req.getHospitalId())) {
+                throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED,
+                        "Doctors can only book appointments at their hospital");
+            }
+            patientId = resolveBookedPatient(req);
         } else {
             throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED);
         }
@@ -259,6 +266,41 @@ public class AppointmentService {
         return buildAppointmentResponse(appointment, patient, doctor, hospital);
     }
 
+    private Long resolveBookedPatient(AppointmentRequest req) {
+        if (req.getPatientId() != null) {
+            return req.getPatientId();
+        }
+        String guestName = req.getPatientName() != null ? req.getPatientName().trim() : null;
+        String guestMobile = req.getPatientMobileNumber() != null
+                ? req.getPatientMobileNumber().trim() : null;
+        if (!org.springframework.util.StringUtils.hasText(guestName)
+                || !org.springframework.util.StringUtils.hasText(guestMobile)) {
+            throw new AppDeniedException(MessageCode.VALIDATION_FAILED,
+                    "Provide patientId or patientName and patientMobileNumber");
+        }
+        if (!guestMobile.matches("\\d{10}")) {
+            throw new AppDeniedException(MessageCode.VALIDATION_FAILED,
+                    "patientMobileNumber must contain exactly 10 digits");
+        }
+
+        return patientRepository.findByMobileNumberAndIsDeletedFalse(guestMobile)
+                .map(Patient::getId)
+                .orElseGet(() -> {
+                    String guestGender = req.getPatientGender() != null
+                            ? req.getPatientGender().getValue() : "OTHER";
+                    return patientRepository.save(Patient.builder()
+                            .name(guestName)
+                            .gender(guestGender)
+                            .dob(req.getPatientDob() != null ? Date.valueOf(req.getPatientDob()) : null)
+                            .mobileNumber(guestMobile)
+                            .passwordHash(null)
+                            .passwordVersion(0)
+                            .isRegistered(false)
+                            .createdAt(LocalDateTime.now())
+                            .build()).getId();
+                });
+    }
+
     @Transactional(readOnly = true)
     public PagedResponse<AppointmentSummaryResponse> getAppointments(
             String status, LocalDate date, Pageable pageable, JwtClaims caller) {
@@ -323,7 +365,15 @@ public class AppointmentService {
                 throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED,
                         "Admin can only cancel or complete appointments");
             }
-        } else {
+        } else if ("DOCTOR".equals(caller.role())){
+            if (!caller.userId().equals(appointment.getDoctorId())) {
+                throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED);
+            }
+            if (!newStatus.equals("CANCELLED") && !newStatus.equals("COMPLETED")) {
+                throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED,
+                        "Doctor can only cancel or complete appointments");
+            }
+        }else {
             throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED);
         }
 

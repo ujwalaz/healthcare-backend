@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PasswordResetAttempt {
+public class PasswordResetAttempt extends UpdatedAtEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,6 +34,4 @@ public class PasswordResetAttempt {
     @Column(name = "locked_until")
     private LocalDateTime lockedUntil;
 
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
 }

@@ -12,6 +12,7 @@ import com.healthcare.exception.ResourceNotFoundException;
 import com.healthcare.repository.AppointmentRepository;
 import com.healthcare.repository.DoctorRepository;
 import com.healthcare.repository.DoctorScheduleRepository;
+import com.healthcare.repository.DocumentRepository;
 import com.healthcare.repository.HospitalRepository;
 import com.healthcare.security.JwtClaims;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class DoctorService {
 
     private final DoctorRepository doctorRepository;
     private final DoctorScheduleRepository scheduleRepository;
+    private final DocumentRepository documentRepository;
     private final HospitalRepository hospitalRepository;
     private final AppointmentRepository appointmentRepository;
 
@@ -61,6 +63,12 @@ public class DoctorService {
         Hospital hospital = hospitalRepository.findById(doctor.getHospitalId())
                 .orElseThrow(() -> new ResourceNotFoundException(MessageCode.HOSPITAL_NOT_FOUND));
 
+        Long profilePictureDocumentId = documentRepository
+                .findFirstByDoctorIdAndDocumentTypeAndIsVisibleToPatientTrueAndIsDeletedFalseOrderByCreatedAtDesc(
+                        doctor.getId(), "PROFILE_PICTURE")
+                .map(document -> document.getId())
+                .orElse(null);
+
         return new DoctorResponse()
                 .id(doctor.getId())
                 .name(doctor.getName())
@@ -70,6 +78,7 @@ public class DoctorService {
                 .email(doctor.getEmail())
                 .hospitalId(doctor.getHospitalId())
                 .hospitalName(hospital.getName())
+                .profilePictureDocumentId(profilePictureDocumentId)
                 .isActive(doctor.getIsActive());
     }
 

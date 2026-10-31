@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RevokedToken {
+public class RevokedToken extends UpdatedAtEntity {
 
     @Id
     @Column(name = "jti", length = 36, nullable = false, updatable = false)

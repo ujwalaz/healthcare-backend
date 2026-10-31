@@ -230,7 +230,7 @@
         "tags": ["Appointments"],
         "operationId": "bookAppointment",
         "summary": "Book an appointment",
-        "description": "PATIENT books for self (patientId resolved from JWT if omitted). ADMIN books on behalf of a patient at their hospital.",
+        "description": "PATIENT books for self. ADMIN and DOCTOR can book for an existing patient using patientId or create a guest patient using patientName and patientMobileNumber. A later patient registration with the same mobile number claims the existing guest record and preserves its history.",
         "requestBody": {
           "required": true,
           "content": {
@@ -403,6 +403,15 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": ["Patients"],
+        "operationId": "deletePatientAccount",
+        "summary": "Soft-delete the current patient's account",
+        "description": "PATIENT only. Disables the account and invalidates authentication while preserving appointments, medical records, and audit history.",
+        "responses": {
+          "204": { "description": "Patient account soft-deleted" }
+        }
       }
     },
     "/api/patients/{id}": {
@@ -431,7 +440,7 @@
         "tags": ["Patients"],
         "operationId": "searchPatients",
         "summary": "Search patients",
-        "description": "ADMIN only.",
+        "description": "ADMIN searches all patients. DOCTOR searches patients linked to the doctor's hospital.",
         "parameters": [
           { "name": "query", "in": "query", "schema": { "type": "string" } },
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
@@ -589,6 +598,54 @@
         }
       }
     },
+    "/api/doctors/profile/picture": {
+      "post": {
+        "tags": ["Doctors"],
+        "operationId": "uploadDoctorProfilePicture",
+        "summary": "Upload or replace the current doctor's profile picture",
+        "description": "DOCTOR only. The picture is optional and is stored as a PROFILE_PICTURE document linked to the doctor.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Doctor profile picture uploaded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DocumentResponse" }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Doctors"],
+        "operationId": "getDoctorProfilePictureDownloadUrl",
+        "summary": "Get the current doctor's profile picture download URL",
+        "description": "DOCTOR only. Returns a short-lived download URL when a profile picture exists.",
+        "responses": {
+          "200": {
+            "description": "Profile picture download URL",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DownloadUrlResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/doctors/{id}": {
       "get": {
         "tags": ["Doctors"],
@@ -708,7 +765,7 @@
                   "patientId": { "type": "integer", "format": "int64" },
                   "hospitalId": { "type": "integer", "format": "int64" },
                   "appointmentId": { "type": "integer", "format": "int64" },
-                  "documentType": { "type": "string", "enum": ["BILL","PRESCRIPTION","REPORT","DOCTOR_NOTE","PREVIOUS_RECORD"] }
+                    "documentType": { "type": "string", "enum": ["BILL","PRESCRIPTION","REPORT","DOCTOR_NOTE","PREVIOUS_RECORD"] }
                 }
               }
             }
@@ -775,7 +832,8 @@
       "delete": {
         "tags": ["Documents"],
         "operationId": "deleteDocument",
-        "summary": "Soft-delete a document (ADMIN only)",
+        "summary": "Delete a document",
+        "description": "PATIENT may delete their own document. ADMIN may delete documents in their hospital. The Azure Blob file is permanently deleted and the database metadata is soft-deleted for audit history.",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
@@ -1075,6 +1133,25 @@
             "description": "Patient identifier. Optional for patient self-booking because it is resolved from the JWT.",
             "example": 201
           },
+          "patientName": {
+            "type": "string",
+            "description": "Guest patient name. Required with patientMobileNumber when patientId is omitted for ADMIN or DOCTOR booking."
+          },
+          "patientMobileNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{10}$",
+            "description": "Guest patient mobile number. Required with patientName when patientId is omitted for ADMIN or DOCTOR booking."
+          },
+          "patientGender": {
+            "type": "string",
+            "enum": ["MALE", "FEMALE", "OTHER"],
+            "description": "Optional guest patient gender; defaults to OTHER."
+          },
+          "patientDob": {
+            "type": "string",
+            "format": "date",
+            "description": "Optional guest patient date of birth."
+          },
           "doctorId": {
             "type": "integer",
             "format": "int64",
@@ -1131,6 +1208,7 @@
           "patientId": {
             "type": "integer",
             "format": "int64",
+            "nullable": true,
             "description": "Patient identifier.",
             "example": 201
           },
@@ -1655,6 +1733,12 @@
             "description": "Hospital name.",
             "example": "Sunrise Care Hospital"
           },
+          "profilePictureDocumentId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Latest visible profile-picture document linked to the doctor."
+          },
           "isActive": {
             "type": "boolean",
             "description": "Whether the doctor account is active.",
@@ -2032,8 +2116,16 @@
           "patientId": {
             "type": "integer",
             "format": "int64",
+            "nullable": true,
             "description": "Patient identifier.",
             "example": 201
+          },
+          "doctorId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Doctor identifier for PROFILE_PICTURE documents.",
+            "example": 301
           },
           "hospitalId": {
             "type": "integer",
@@ -2050,6 +2142,7 @@
           },
           "documentType": {
             "type": "string",
+            "enum": ["BILL", "PRESCRIPTION", "REPORT", "DOCTOR_NOTE", "PREVIOUS_RECORD", "PROFILE_PICTURE"],
             "description": "Document classification.",
             "example": "PREVIOUS_RECORD"
           },
@@ -2088,6 +2181,7 @@
           },
           "documentType": {
             "type": "string",
+            "enum": ["BILL", "PRESCRIPTION", "REPORT", "DOCTOR_NOTE", "PREVIOUS_RECORD", "PROFILE_PICTURE"],
             "description": "Document classification.",
             "example": "PREVIOUS_RECORD"
           },

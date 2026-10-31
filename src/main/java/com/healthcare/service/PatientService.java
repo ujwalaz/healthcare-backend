@@ -63,6 +63,20 @@ public class PatientService {
         return toResponse(patient);
     }
 
+    @Transactional
+    public void deleteAccount(Long patientId) {
+        Patient patient = findPatientById(patientId);
+        if (Boolean.TRUE.equals(patient.getIsDeleted())) {
+            return;
+        }
+        patient.setIsDeleted(true);
+        patient.setIsRegistered(false);
+        patient.setDeletedAt(LocalDateTime.now());
+        patient.setPasswordVersion((patient.getPasswordVersion() == null ? 0 : patient.getPasswordVersion()) + 1);
+        patientRepository.save(patient);
+        log.info("Soft-deleted patient account for patientId={}", patientId);
+    }
+
     @Transactional(readOnly = true)
     public PatientResponse getPatientById(Long id) {
         return toResponse(findPatientById(id));
@@ -72,13 +86,21 @@ public class PatientService {
     public PagedResponse<PatientSummaryResponse> searchPatients(String query, Pageable pageable) {
         String searchTerm = StringUtils.hasText(query) ? query : "";
         Page<Patient> page = patientRepository
-                .findByNameContainingIgnoreCaseOrMobileNumberContaining(searchTerm, searchTerm, pageable);
+                .findActiveByNameOrMobile(searchTerm, searchTerm, pageable);
         Page<PatientSummaryResponse> responsePage = page.map(this::toSummary);
         return PagedResponse.from(responsePage);
     }
 
+    @Transactional(readOnly = true)
+    public PagedResponse<PatientSummaryResponse> searchPatientsForHospital(String query, Long hospitalId,
+                                                                            Pageable pageable) {
+        String searchTerm = StringUtils.hasText(query) ? query : "";
+        Page<Patient> page = patientRepository.searchByHospital(hospitalId, searchTerm, pageable);
+        return PagedResponse.from(page.map(this::toSummary));
+    }
+
     private Patient findPatientById(Long id) {
-        return patientRepository.findById(id)
+        return patientRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException(MessageCode.PATIENT_NOT_FOUND));
     }
 
