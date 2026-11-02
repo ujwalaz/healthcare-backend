@@ -290,7 +290,7 @@ public class DocumentService {
                 .doctorId(d.getDoctorId())
                 .hospitalId(d.getHospitalId())
                 .appointmentId(d.getAppointmentId())
-                .documentType(d.getDocumentType())
+                .documentType(DocumentResponse.DocumentTypeEnum.valueOf(d.getDocumentType()))
                 .originalFileName(d.getOriginalFileName())
                 .uploadedByRole(d.getUploadedByRole())
                 .isVisibleToPatient(d.getIsVisibleToPatient())
@@ -300,7 +300,7 @@ public class DocumentService {
     private DocumentSummaryResponse toSummaryResponse(Document d) {
         return new DocumentSummaryResponse()
                 .id(d.getId())
-                .documentType(d.getDocumentType())
+                .documentType(DocumentSummaryResponse.DocumentTypeEnum.valueOf(d.getDocumentType()))
                 .originalFileName(d.getOriginalFileName())
                 .uploadedByRole(d.getUploadedByRole())
                 .appointmentId(d.getAppointmentId())
