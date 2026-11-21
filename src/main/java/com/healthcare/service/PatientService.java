@@ -65,10 +65,8 @@ public class PatientService {
 
     @Transactional
     public void deleteAccount(Long patientId) {
-        Patient patient = findPatientById(patientId);
-        if (Boolean.TRUE.equals(patient.getIsDeleted())) {
-            return;
-        }
+        Patient patient = patientRepository.lockActiveAccount(patientId)
+                .orElseThrow(() -> new ResourceNotFoundException(MessageCode.PATIENT_NOT_FOUND));
         patient.setIsDeleted(true);
         patient.setIsRegistered(false);
         patient.setDeletedAt(LocalDateTime.now());

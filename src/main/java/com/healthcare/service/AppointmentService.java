@@ -40,6 +40,7 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final DoctorRepository doctorRepository;
     private final PatientRepository patientRepository;
+    private final PatientRelationshipService patientRelationships;
     private final HospitalRepository hospitalRepository;
     private final DoctorScheduleRepository scheduleRepository;
     private final PatientHospitalLinkRepository patientHospitalLinkRepository;
@@ -154,7 +155,8 @@ public class AppointmentService {
     public AppointmentResponse bookAppointment(AppointmentRequest req, JwtClaims caller) {
         Long patientId;
         if ("PATIENT".equals(caller.role())) {
-            patientId = caller.userId();
+            patientId = req.getPatientId() != null ? req.getPatientId() : caller.userId();
+            validatePatientAppointmentAccess(caller.userId(), patientId, true);
         } else if ("ADMIN".equals(caller.role())) {
             if (!caller.hospitalId().equals(req.getHospitalId())) {
                 throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED,
@@ -306,6 +308,7 @@ public class AppointmentService {
             String status, LocalDate date, Pageable pageable, JwtClaims caller) {
 
         Long patientId = "PATIENT".equals(caller.role()) ? caller.userId() : null;
+        if (patientId != null) patientRelationships.requireActiveOwner(patientId);
         Long doctorId = "DOCTOR".equals(caller.role()) ? caller.userId() : null;
         Long hospitalId = "ADMIN".equals(caller.role()) ? caller.hospitalId() : null;
 
@@ -350,9 +353,7 @@ public class AppointmentService {
         String newStatus = request.getStatus().toUpperCase();
 
         if ("PATIENT".equals(caller.role())) {
-            if (!appointment.getPatientId().equals(caller.userId())) {
-                throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED);
-            }
+            validatePatientAppointmentAccess(caller.userId(), appointment.getPatientId(), true);
             if (!"CANCELLED".equals(newStatus)) {
                 throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED,
                         "Patients can only cancel appointments");
@@ -428,11 +429,7 @@ public class AppointmentService {
 
     private void validateAppointmentAccess(Appointment appointment, JwtClaims caller) {
         switch (caller.role()) {
-            case "PATIENT" -> {
-                if (!appointment.getPatientId().equals(caller.userId())) {
-                    throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED);
-                }
-            }
+            case "PATIENT" -> validatePatientAppointmentAccess(caller.userId(), appointment.getPatientId(), false);
             case "DOCTOR" -> {
                 if (!appointment.getDoctorId().equals(caller.userId())) {
                     throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED);
@@ -443,6 +440,17 @@ public class AppointmentService {
                     throw new AppDeniedException(MessageCode.AUTH_UNAUTHORIZED);
                 }
             }
+        }
+    }
+
+    private void validatePatientAppointmentAccess(Long ownerId, Long patientId, boolean write) {
+        if (write) {
+            patientRelationships.lockOwner(ownerId);
+        } else {
+            patientRelationships.requireActiveOwner(ownerId);
+        }
+        if (!ownerId.equals(patientId)) {
+            patientRelationships.requireMember(ownerId, patientId);
         }
     }
 

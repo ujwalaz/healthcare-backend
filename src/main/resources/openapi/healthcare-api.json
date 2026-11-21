@@ -230,7 +230,7 @@
         "tags": ["Appointments"],
         "operationId": "bookAppointment",
         "summary": "Book an appointment",
-        "description": "PATIENT books for self. ADMIN and DOCTOR can book for an existing patient using patientId or create a guest patient using patientName and patientMobileNumber. A later patient registration with the same mobile number claims the existing guest record and preserves its history.",
+        "description": "PATIENT books for self by default or for an active family member using patientId. ADMIN and DOCTOR can book for an existing patient using patientId or create a guest patient using patientName and patientMobileNumber. A later patient registration with the same mobile number claims the existing guest record and preserves its history.",
         "requestBody": {
           "required": true,
           "content": {
@@ -254,7 +254,7 @@
         "tags": ["Appointments"],
         "operationId": "getAppointments",
         "summary": "List appointments for the current user",
-        "description": "PATIENT sees own appointments. DOCTOR sees own appointments. ADMIN sees appointments for their hospital.",
+        "description": "PATIENT sees their own appointments and those of active family members. DOCTOR sees own appointments. ADMIN sees appointments for their hospital.",
         "parameters": [
           { "name": "status", "in": "query", "schema": { "type": "string" } },
           { "name": "date", "in": "query", "schema": { "type": "string", "format": "date" } },
@@ -298,7 +298,7 @@
         "tags": ["Appointments"],
         "operationId": "updateAppointmentStatus",
         "summary": "Update the status of an appointment",
-        "description": "ADMIN and PATIENT (own appointments) can update status, e.g. cancel or complete.",
+        "description": "A PATIENT may cancel their own appointment or an active family member's appointment. Staff status updates follow their existing role permissions.",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
@@ -1130,7 +1130,7 @@
           "patientId": {
             "type": "integer",
             "format": "int64",
-            "description": "Patient identifier. Optional for patient self-booking because it is resolved from the JWT.",
+            "description": "Patient receiving care. PATIENT callers may omit this for self-booking or provide an active family member's patient ID.",
             "example": 201
           },
           "patientName": {

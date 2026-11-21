@@ -14,6 +14,9 @@ import java.util.List;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
+    String PATIENT_SCOPE = "(:patientId IS NULL OR a.patientId = :patientId OR EXISTS (" +
+            "SELECT r.id FROM PatientRelationship r WHERE r.ownerPatientId = :patientId " +
+            "AND r.member.id = a.patientId AND r.revokedAt IS NULL AND r.member.isDeleted = false)) AND ";
 
     int countByDoctorIdAndAppointmentDateAndStatusNot(Long doctorId, Date date, String status);
 
@@ -36,14 +39,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
            "a.appointmentDate AS appointmentDate, a.startTime AS startTime, a.endTime AS endTime, " +
            "a.status AS status, a.isOffline AS isOffline " +
            "FROM Appointment a JOIN Patient p ON p.id = a.patientId JOIN Doctor d ON d.id = a.doctorId WHERE " +
-           "(:patientId IS NULL OR a.patientId = :patientId) AND " +
+           PATIENT_SCOPE +
            "(:doctorId IS NULL OR a.doctorId = :doctorId) AND " +
            "(:hospitalId IS NULL OR a.hospitalId = :hospitalId) AND " +
            "(:status IS NULL OR a.status = :status) AND " +
            "(:date IS NULL OR a.appointmentDate = :date) " +
            "ORDER BY a.appointmentDate ASC, a.startTime ASC",
            countQuery = "SELECT COUNT(a) FROM Appointment a WHERE " +
-           "(:patientId IS NULL OR a.patientId = :patientId) AND " +
+           PATIENT_SCOPE +
            "(:doctorId IS NULL OR a.doctorId = :doctorId) AND " +
            "(:hospitalId IS NULL OR a.hospitalId = :hospitalId) AND " +
            "(:status IS NULL OR a.status = :status) AND " +

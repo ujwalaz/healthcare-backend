@@ -28,7 +28,7 @@ public class Patient extends UpdatedAtEntity {
     @Column(name = "dob")
     private Date dob;
 
-    @Column(name = "mobile_number", nullable = false)
+    @Column(name = "mobile_number")
     private String mobileNumber;
 
     @Column(name = "email")
