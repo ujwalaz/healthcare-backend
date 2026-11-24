@@ -84,6 +84,15 @@ All configuration lives in `src/main/resources/application.properties`.
 | `app.azure.storage.container-name` | Blob container name |
 | `app.azure.storage.sas-expiry-minutes` | SAS URL validity window (default 60 min) |
 
+The application creates `app.azure.storage.container-name` during startup if it
+does not already exist. The configured Azure storage credentials therefore need
+permission to create blob containers (for example, the storage account
+connection string must include the account key).
+
+Blob Storage uses the JDK HTTP client transport so Java 17 handles TLS directly;
+this avoids native Reactor Netty/OpenSSL handshake failures in some Azure App
+Service runtimes.
+
 > **Important:** `sendTimeAsDatetime=false` must remain in the JDBC URL. Without it, the MSSQL JDBC driver sends `java.sql.Time` as `DATETIME`, causing type mismatch errors on SQL Server `TIME` columns.
 
 ### Internal-token protected endpoints
@@ -95,6 +104,8 @@ X-Internal-Token: InternalWebApp
 ```
 
 The expected value is configurable via `app.internal-token` (defaults to `InternalWebApp`). `InternalTokenFilter` intercepts this specific path before Spring Security's normal auth chain and rejects requests with a missing/incorrect header (`401`, `AUTH_INTERNAL_TOKEN_INVALID`). This endpoint is intended for trusted internal callers (e.g. an internal dashboard), not end-user (patient/doctor/admin) JWTs.
+
+`GET /api/doctors` accepts **either** credential: a valid JWT (any role) **or** the same `X-Internal-Token` header — whichever is present is honored, so it can be called both by logged-in users and by trusted internal callers without a user session. Other `/api/doctors/**` sub-paths (`{id}`, `{id}/schedule`, `{id}/calendar`) are unaffected and still require a JWT as before.
 
 ---
 
@@ -150,7 +161,7 @@ Login/register responses return `AuthResponse` `{ token, id, name, role, hospita
 
 | Method | Path | Role | Notes |
 |---|---|---|---|
-| GET | `/` | All | `hospitalId` (optional), `page`, `size` |
+| GET | `/` | All (JWT) **or** `X-Internal-Token` header | `hospitalId` (optional), `page`, `size` |
 | GET | `/{id}` | All | — |
 | GET | `/{id}/schedule` | All | Weekly recurring schedule |
 | POST | `/{id}/schedule` | DOCTOR/ADMIN | Body: `List<ScheduleRequest>` |
@@ -247,3 +258,12 @@ The schema is initialised by `db/migration/V1__init_schema.sql`.
 
 To add schema changes, create `V2__description.sql`, `V3__description.sql`, etc.  
 **Never modify `V1__init_schema.sql`.**
+
+## Fast2SMS OTP
+
+Apply `src/main/resources/db/manual/fast2sms_otp.sql` after the existing password-reset and patient-account migrations. Set `FAST2SMS_API_KEY` and `FAST2SMS_OTP_TEMPLATE_ID` in the backend environment. If either variable is missing, the OTP endpoints return HTTP 503.
+
+- Set `APP_OTP_EXPIRY_MINUTES` and `APP_OTP_RESEND_SECONDS` to override the defaults of 5 minutes and 60 seconds.
+- Verify a `REGISTRATION` OTP to obtain the required registration `verificationToken`. Use the same mobile number for OTP verification and registration.
+- Verify a `PASSWORD_RESET` OTP with the account role, or use the existing security-question endpoint. Both issue a `resetToken` for `POST /api/auth/password-reset/complete`.
+- OTP limits use the servlet request's remote address. Deployments behind a reverse proxy should configure trusted proxy handling so the backend sees the client address.

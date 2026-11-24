@@ -23,9 +23,8 @@ import java.util.regex.Pattern;
  * {@link CorrelationIdFilter} so entry/exit lines carry the correlation id.
  *
  * Request bodies are cached eagerly via {@link CachedBodyHttpServletRequest}
- * so they can be logged before the controller consumes them; multipart
- * requests (file uploads) are excluded from body logging/caching since their
- * payloads are large binary blobs and don't need to be re-read here.
+ * so they can be logged before the controller consumes them. Multipart and
+ * authentication requests are excluded from body logging and request caching.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
@@ -48,12 +47,13 @@ public class ApiLoggingFilter extends OncePerRequestFilter {
         boolean isMultipart = request.getContentType() != null
                 && request.getContentType().toLowerCase().startsWith("multipart/");
 
-        HttpServletRequest requestToUse = isMultipart ? request : new CachedBodyHttpServletRequest(request);
+        boolean isAuth = request.getRequestURI().contains("/api/auth/");
+        HttpServletRequest requestToUse = isMultipart || isAuth ? request : new CachedBodyHttpServletRequest(request);
         ContentCachingResponseWrapper responseToUse = new ContentCachingResponseWrapper(response);
 
-        String queryString = StringUtils.hasText(request.getQueryString())
+        String queryString = !isAuth && StringUtils.hasText(request.getQueryString())
                 ? "?" + maskQueryString(request.getQueryString()) : "";
-        String requestBody = isMultipart
+        String requestBody = isAuth ? "[authentication body not logged]" : isMultipart
                 ? "[multipart upload - body not logged]"
                 : mask(new String(((CachedBodyHttpServletRequest) requestToUse).getCachedBody(), StandardCharsets.UTF_8));
 
@@ -64,7 +64,8 @@ public class ApiLoggingFilter extends OncePerRequestFilter {
             filterChain.doFilter(requestToUse, responseToUse);
         } finally {
             long duration = System.currentTimeMillis() - startTime;
-            String responseBody = mask(new String(responseToUse.getContentAsByteArray(), StandardCharsets.UTF_8));
+            String responseBody = isAuth ? "[authentication body not logged]"
+                    : mask(new String(responseToUse.getContentAsByteArray(), StandardCharsets.UTF_8));
             log.info("<-- {} {}{} status={} durationMs={} body={}",
                     request.getMethod(), request.getRequestURI(), queryString,
                     responseToUse.getStatus(), duration, truncate(responseBody));

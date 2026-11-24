@@ -11,6 +11,126 @@
       "name": "Auth",
       "item": [
         {
+          "name": "Send registration OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobileNumber\": \"{{otpMobileNumber}}\",\n  \"purpose\": \"REGISTRATION\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/auth/otp/send"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify registration OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobileNumber\": \"{{otpMobileNumber}}\",\n  \"purpose\": \"REGISTRATION\",\n  \"otp\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/auth/otp/verify"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const token = pm.response.json().data?.verificationToken;",
+                  "    if (token) pm.collectionVariables.set(\"verificationToken\", token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send password reset OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobileNumber\": \"{{otpMobileNumber}}\",\n  \"purpose\": \"PASSWORD_RESET\",\n  \"role\": \"{{otpRole}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/auth/otp/send"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify password reset OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobileNumber\": \"{{otpMobileNumber}}\",\n  \"purpose\": \"PASSWORD_RESET\",\n  \"role\": \"{{otpRole}}\",\n  \"otp\": \"{{otpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/auth/otp/verify"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const token = pm.response.json().data?.resetToken;",
+                  "    if (token) pm.collectionVariables.set(\"resetToken\", token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Register a new patient",
           "request": {
             "method": "POST",
@@ -22,7 +142,7 @@
             ],
             "body": {
               "mode": "raw",
-            "raw": "{\n  \"name\": \"Ujjwala Zope\",\n  \"gender\": \"FEMALE\",\n  \"dob\": \"1995-01-01\",\n  \"mobileNumber\": \"8551002220\",\n  \"email\": \"ujjwala@example.com\",\n  \"password\": \"Secret@123\",\n  \"securityQuestionId\": 1,\n  \"securityAnswer\": \"St. Mary's School\",\n  \"address\": \"12 MG Road, Bangalore\",\n  \"emergencyContactNumber\": \"9876500000\",\n  \"bloodGroup\": \"B-\",\n  \"permanentIllness\": \"High BP\"\n}",
+            "raw": "{\n  \"name\": \"Ujjwala Zope\",\n  \"gender\": \"FEMALE\",\n  \"dob\": \"1995-01-01\",\n  \"mobileNumber\": \"{{otpMobileNumber}}\",\n  \"email\": \"ujjwala@example.com\",\n  \"password\": \"Secret@123\",\n  \"verificationToken\": \"{{verificationToken}}\",\n  \"securityQuestionId\": 1,\n  \"securityAnswer\": \"St. Mary's School\",\n  \"address\": \"12 MG Road, Bangalore\",\n  \"emergencyContactNumber\": \"9876500000\",\n  \"bloodGroup\": \"B-\",\n  \"permanentIllness\": \"High BP\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1691,6 +1811,10 @@
       "key": "resetToken",
       "value": ""
     },
+    { "key": "verificationToken", "value": "" },
+    { "key": "otpMobileNumber", "value": "" },
+    { "key": "otpRole", "value": "PATIENT" },
+    { "key": "otpCode", "value": "" },
     {
       "key": "internalToken",
       "value": ""

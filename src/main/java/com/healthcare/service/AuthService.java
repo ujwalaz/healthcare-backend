@@ -11,7 +11,9 @@ import com.healthcare.exception.BadRequestException;
 import com.healthcare.exception.ConflictException;
 import com.healthcare.exception.ResourceNotFoundException;
 import com.healthcare.repository.AdminUserRepository;
+import com.healthcare.repository.AuthTransactionLock;
 import com.healthcare.repository.DoctorRepository;
+import com.healthcare.repository.OtpStateRepository;
 import com.healthcare.repository.PatientRepository;
 import com.healthcare.repository.PasswordResetTokenRepository;
 import com.healthcare.repository.SecurityQuestionRepository;
@@ -34,6 +36,8 @@ import java.security.SecureRandom;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -49,24 +53,39 @@ public class AuthService {
     private final SecurityQuestionRepository securityQuestionRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordResetAttemptService passwordResetAttemptService;
+    private final AuthTransactionLock authLock;
+    private final OtpStateRepository otpState;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
     public AuthResponse registerPatient(PatientRegisterRequest request) {
+        String mobile = OtpService.normalizeMobile(request.getMobileNumber());
+        authLock.acquire("otp:" + mobile);
+        if (!otpState.consumeRegistration(mobile, hashToken(request.getVerificationToken()), LocalDateTime.now())) {
+            throw new BadRequestException(MessageCode.AUTH_OTP_INVALID);
+        }
         SecurityQuestion securityQuestion = securityQuestionRepository.findById(request.getSecurityQuestionId())
                 .filter(question -> Boolean.TRUE.equals(question.getIsActive()))
                 .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
 
-        Patient patient = patientRepository.findByMobileNumber(request.getMobileNumber()).orElse(null);
+        Patient patient = patientRepository.findByMobileNumber(mobile).orElse(null);
         if (patient != null && Boolean.TRUE.equals(patient.getIsRegistered())) {
             throw new ConflictException(MessageCode.PATIENT_MOBILE_EXISTS);
         }
         if (patient != null && Boolean.TRUE.equals(patient.getIsDeleted())) {
             throw new ConflictException(MessageCode.PATIENT_MOBILE_EXISTS);
         }
+        if (patient != null && (!patient.getName().strip().replaceAll("\\s+", " ")
+                .equalsIgnoreCase(request.getName().strip().replaceAll("\\s+", " "))
+                || (patient.getDob() != null && !patient.getDob().toLocalDate().equals(request.getDob()))
+                || (patient.getGender() != null && !"OTHER".equals(patient.getGender())
+                    && !patient.getGender().equalsIgnoreCase(request.getGender())))) {
+            throw new ConflictException(MessageCode.PATIENT_MOBILE_EXISTS,
+                    "Guest profile details require review. Contact support to complete registration.");
+        }
         if (patient == null) {
             patient = Patient.builder()
-                    .mobileNumber(request.getMobileNumber())
+                    .mobileNumber(mobile)
                     .createdAt(LocalDateTime.now())
                     .build();
         }
@@ -74,7 +93,7 @@ public class AuthService {
         patient.setName(request.getName());
         patient.setGender(request.getGender());
         patient.setDob(Date.valueOf(request.getDob()));
-        patient.setMobileNumber(request.getMobileNumber());
+        patient.setMobileNumber(mobile);
         patient.setEmail(request.getEmail());
         patient.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         patient.setSecurityQuestionId(securityQuestion.getId());
@@ -200,30 +219,45 @@ public class AuthService {
                                                          Long questionId, String answer) {
         String normalizedRole = normalizeRole(role);
         Account account = findResetAccount(normalizedRole, identifier);
+        lockResetAccount(normalizedRole, account.id());
         LocalDateTime now = LocalDateTime.now();
         if (passwordResetAttemptService.isLocked(normalizedRole, account.id(), now)) {
             throw new BadRequestException(MessageCode.AUTH_RESET_INVALID);
         }
-        SecurityQuestion question = securityQuestionRepository.findById(questionId)
-                .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
-
-        boolean answerMatches = StringUtils.hasText(answer)
+        boolean questionMatches = Objects.equals(questionId, account.questionId()) && questionId != null
+                && securityQuestionRepository.findById(questionId)
+                        .filter(question -> Boolean.TRUE.equals(question.getIsActive())).isPresent();
+        boolean answerMatches = questionMatches && StringUtils.hasText(answer)
                 && StringUtils.hasText(account.answerHash())
                 && matchesPassword(normalizeAnswer(answer), account.answerHash());
-        if (!Boolean.TRUE.equals(question.getIsActive())
-                || account.questionId() == null
-                || !questionId.equals(account.questionId())
-                || !answerMatches) {
+        if (!answerMatches) {
             passwordResetAttemptService.recordFailure(normalizedRole, account.id(), now);
             throw new BadRequestException(MessageCode.AUTH_RESET_INVALID);
         }
 
         passwordResetAttemptService.clear(normalizedRole, account.id());
+        return issueResetToken(normalizedRole, account.id(), now);
+    }
+
+    public Long findOtpResetAccountId(String role, String mobile) {
+        return findEligibleResetAccount(role, mobile).map(Account::id).orElse(null);
+    }
+
+    @Transactional
+    public PasswordResetResult issueOtpResetToken(String role, Long accountId, String mobile) {
+        lockResetAccount(role, accountId);
+        if (!accountId.equals(findOtpResetAccountId(role, mobile))) {
+            throw new BadRequestException(MessageCode.AUTH_RESET_INVALID);
+        }
+        return issueResetToken(role, accountId, LocalDateTime.now());
+    }
+
+    private PasswordResetResult issueResetToken(String role, Long accountId, LocalDateTime now) {
         String rawToken = generateToken();
         PasswordResetToken token = PasswordResetToken.builder()
                 .tokenHash(hashToken(rawToken))
-                .accountRole(normalizedRole)
-                .accountId(account.id())
+                .accountRole(role)
+                .accountId(accountId)
                 .expiresAt(now.plusMinutes(10))
                 .createdAt(now)
                 .build();
@@ -239,20 +273,26 @@ public class AuthService {
                 .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
 
         String role = token.getAccountRole();
+        lockResetAccount(role, token.getAccountId());
+        if (passwordResetTokenRepository.consume(token.getId(), LocalDateTime.now()) != 1) {
+            throw new BadRequestException(MessageCode.AUTH_RESET_INVALID);
+        }
         if ("PATIENT".equals(role)) {
-            Patient account = patientRepository.findById(token.getAccountId())
+            Patient account = patientRepository.lockActiveAccount(token.getAccountId())
                     .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
             account.setPasswordHash(passwordEncoder.encode(newPassword));
             account.setPasswordVersion(nextVersion(account.getPasswordVersion()));
             patientRepository.save(account);
         } else if ("DOCTOR".equals(role)) {
             Doctor account = doctorRepository.findById(token.getAccountId())
+                    .filter(doctor -> Boolean.TRUE.equals(doctor.getIsActive()))
                     .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
             account.setPasswordHash(passwordEncoder.encode(newPassword));
             account.setPasswordVersion(nextVersion(account.getPasswordVersion()));
             doctorRepository.save(account);
         } else if ("ADMIN".equals(role)) {
             AdminUser account = adminUserRepository.findById(token.getAccountId())
+                    .filter(admin -> Boolean.TRUE.equals(admin.getIsActive()))
                     .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
             account.setPasswordHash(passwordEncoder.encode(newPassword));
             account.setPasswordVersion(nextVersion(account.getPasswordVersion()));
@@ -261,24 +301,32 @@ public class AuthService {
             throw new BadRequestException(MessageCode.AUTH_RESET_INVALID);
         }
 
-        token.setConsumedAt(LocalDateTime.now());
-        passwordResetTokenRepository.save(token);
+        passwordResetTokenRepository.revokeForAccount(role, token.getAccountId(), LocalDateTime.now());
+    }
+
+    private void lockResetAccount(String role, Long accountId) {
+        authLock.acquire("reset:" + role + ":" + accountId);
     }
 
     private Account findResetAccount(String role, String identifier) {
         if (!StringUtils.hasText(identifier)) {
             throw new BadRequestException(MessageCode.AUTH_RESET_INVALID);
         }
+        return findEligibleResetAccount(role, identifier)
+                .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
+    }
+
+    private Optional<Account> findEligibleResetAccount(String role, String identifier) {
         return switch (role) {
             case "PATIENT" -> patientRepository.findByMobileNumberAndIsDeletedFalse(identifier)
-                    .map(p -> new Account(p.getId(), p.getSecurityQuestionId(), p.getSecurityAnswerHash()))
-                    .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
+                    .filter(p -> Boolean.TRUE.equals(p.getIsRegistered()))
+                    .map(p -> new Account(p.getId(), p.getSecurityQuestionId(), p.getSecurityAnswerHash()));
             case "DOCTOR" -> doctorRepository.findByPhone(identifier)
-                    .map(d -> new Account(d.getId(), d.getSecurityQuestionId(), d.getSecurityAnswerHash()))
-                    .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
+                    .filter(d -> Boolean.TRUE.equals(d.getIsActive()))
+                    .map(d -> new Account(d.getId(), d.getSecurityQuestionId(), d.getSecurityAnswerHash()));
             case "ADMIN" -> adminUserRepository.findByMobileNumber(identifier)
-                    .map(a -> new Account(a.getId(), a.getSecurityQuestionId(), a.getSecurityAnswerHash()))
-                    .orElseThrow(() -> new BadRequestException(MessageCode.AUTH_RESET_INVALID));
+                    .filter(a -> Boolean.TRUE.equals(a.getIsActive()))
+                    .map(a -> new Account(a.getId(), a.getSecurityQuestionId(), a.getSecurityAnswerHash()));
             default -> throw new BadRequestException(MessageCode.AUTH_INVALID_ROLE);
         };
     }
@@ -313,13 +361,13 @@ public class AuthService {
         }
     }
 
-    private String generateToken() {
+    String generateToken() {
         byte[] bytes = new byte[32];
         secureRandom.nextBytes(bytes);
         return HexFormat.of().formatHex(bytes);
     }
 
-    private String hashToken(String token) {
+    String hashToken(String token) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(token.getBytes(StandardCharsets.UTF_8)));

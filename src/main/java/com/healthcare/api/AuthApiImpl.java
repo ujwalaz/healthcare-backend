@@ -4,12 +4,18 @@ import com.healthcare.annotation.ApiMessage;
 import com.healthcare.constants.MessageCode;
 import com.healthcare.dto.AuthResponse;
 import com.healthcare.dto.LoginRequest;
+import com.healthcare.dto.OtpSendRequest;
+import com.healthcare.dto.OtpSendResponse;
+import com.healthcare.dto.OtpVerifyRequest;
+import com.healthcare.dto.OtpVerifyResponse;
 import com.healthcare.dto.PatientRegisterRequest;
 import com.healthcare.dto.PasswordResetCompleteRequest;
 import com.healthcare.dto.PasswordResetTokenResponse;
 import com.healthcare.dto.PasswordResetVerifyRequest;
 import com.healthcare.dto.SecurityQuestionResponse;
 import com.healthcare.service.AuthService;
+import com.healthcare.service.OtpService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.http.HttpStatus;
@@ -25,6 +31,31 @@ import java.util.stream.Collectors;
 public class AuthApiImpl implements AuthApi {
 
     private final AuthService authService;
+    private final OtpService otpService;
+    private final HttpServletRequest servletRequest;
+
+    @Override
+    @ApiMessage(MessageCode.SUCCESS)
+    public ResponseEntity<OtpSendResponse> sendOtp(OtpSendRequest request) {
+        OtpService.SendResult result = otpService.send(request.getMobileNumber(),
+                OtpService.Purpose.valueOf(request.getPurpose().name()),
+                request.getRole() == null ? null : OtpService.Role.valueOf(request.getRole().name()),
+                servletRequest.getRemoteAddr());
+        return ResponseEntity.ok(new OtpSendResponse()
+                .expiresInSeconds(result.expiresInSeconds())
+                .resendAfterSeconds(result.resendAfterSeconds()));
+    }
+
+    @Override
+    @ApiMessage(MessageCode.SUCCESS)
+    public ResponseEntity<OtpVerifyResponse> verifyOtp(OtpVerifyRequest request) {
+        OtpService.VerifyResult result = otpService.verify(request.getMobileNumber(),
+                OtpService.Purpose.valueOf(request.getPurpose().name()),
+                request.getRole() == null ? null : OtpService.Role.valueOf(request.getRole().name()),
+                request.getOtp(), servletRequest.getRemoteAddr());
+        return ResponseEntity.ok(new OtpVerifyResponse().verificationToken(result.verificationToken())
+                .resetToken(result.resetToken()).expiresAt(result.expiresAt()));
+    }
 
     @Override
     @ApiMessage(MessageCode.AUTH_REGISTER_SUCCESS)

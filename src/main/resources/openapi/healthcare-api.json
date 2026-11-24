@@ -30,6 +30,45 @@
         }
       }
     },
+    "/api/auth/otp/send": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "sendOtp",
+        "summary": "Send an OTP for registration or password reset",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OtpSendRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP request accepted",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OtpSendResponse" } } }
+          },
+          "429": { "description": "Rate limit or resend cooldown reached" },
+          "503": { "description": "SMS verification is temporarily unavailable" }
+        }
+      }
+    },
+    "/api/auth/otp/verify": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "verifyOtp",
+        "summary": "Verify an OTP using its mobile number and purpose",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OtpVerifyRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration verificationToken or password reset resetToken issued",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OtpVerifyResponse" } } }
+          },
+          "400": { "description": "Invalid or expired OTP" },
+          "429": { "description": "Rate limit reached" },
+          "503": { "description": "SMS verification is temporarily unavailable" }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "tags": ["Auth"],
@@ -1040,10 +1079,49 @@
           "password"
         ]
       },
+      "OtpSendRequest": {
+        "type": "object",
+        "required": ["mobileNumber", "purpose"],
+        "properties": {
+          "mobileNumber": { "type": "string", "pattern": "^(?:[+]91)?[0-9]{10}$" },
+          "purpose": { "type": "string", "enum": ["REGISTRATION", "PASSWORD_RESET"] },
+          "role": { "type": "string", "enum": ["PATIENT", "DOCTOR", "ADMIN"], "description": "Required for password reset. Omit for registration." }
+        }
+      },
+      "OtpVerifyRequest": {
+        "type": "object",
+        "required": ["mobileNumber", "purpose", "otp"],
+        "properties": {
+          "mobileNumber": { "type": "string", "pattern": "^(?:[+]91)?[0-9]{10}$" },
+          "purpose": { "type": "string", "enum": ["REGISTRATION", "PASSWORD_RESET"] },
+          "role": { "type": "string", "enum": ["PATIENT", "DOCTOR", "ADMIN"], "description": "Required for password reset. Omit for registration." },
+          "otp": { "type": "string", "pattern": "^[0-9]{6}$" }
+        }
+      },
+      "OtpSendResponse": {
+        "type": "object",
+        "properties": {
+          "expiresInSeconds": { "type": "integer" },
+          "resendAfterSeconds": { "type": "integer" }
+        }
+      },
+      "OtpVerifyResponse": {
+        "type": "object",
+        "properties": {
+          "verificationToken": { "type": "string", "description": "Issued for registration." },
+          "resetToken": { "type": "string", "description": "Issued for password reset and accepted by the existing reset completion endpoint." },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "PatientRegisterRequest": {
         "type": "object",
         "description": "Request payload to register a new patient.",
         "properties": {
+          "verificationToken": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Single-use token from registration OTP verification for this mobile number."
+          },
           "name": {
             "type": "string",
             "description": "Patient full name.",
@@ -1062,8 +1140,8 @@
           },
           "mobileNumber": {
             "type": "string",
-            "pattern": "^[0-9]{10}$",
-            "description": "Patient 10-digit mobile number.",
+            "pattern": "^(?:[+]91)?[0-9]{10}$",
+            "description": "Patient 10-digit mobile number with optional +91 prefix.",
             "example": "9876543210"
           },
           "email": {
@@ -1120,7 +1198,8 @@
           "mobileNumber",
           "password",
           "securityQuestionId",
-          "securityAnswer"
+          "securityAnswer",
+          "verificationToken"
         ]
       },
       "AppointmentRequest": {

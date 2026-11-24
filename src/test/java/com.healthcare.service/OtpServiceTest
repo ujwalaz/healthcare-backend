@@ -1,0 +1,97 @@
+package com.healthcare.service;
+
+import com.healthcare.exception.BadRequestException;
+import com.healthcare.repository.AuthTransactionLock;
+import com.healthcare.repository.OtpStateRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.Optional;
+
+import static com.healthcare.service.OtpService.Purpose.PASSWORD_RESET;
+import static com.healthcare.service.OtpService.Purpose.REGISTRATION;
+import static com.healthcare.service.OtpService.Role.DOCTOR;
+import static com.healthcare.service.OtpService.Role.PATIENT;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+class OtpServiceTest {
+    private static final String MOBILE = "9876543210";
+    private static final String IP = "192.0.2.1";
+    private static final String CODE = "012345";
+    private final Fast2SmsOtpClient provider = mock(Fast2SmsOtpClient.class);
+    private final OtpStateRepository state = mock(OtpStateRepository.class);
+    private final AuthService auth = mock(AuthService.class);
+    private final OtpService service = new OtpService(provider, state, mock(AuthTransactionLock.class),
+            mock(OtpRateLimiter.class), auth, 5, 60);
+
+    @Test
+    void registrationReturnTokenIsStoredOnlyAsHash() {
+        when(state.find(MOBILE)).thenReturn(Optional.of(pending("REGISTRATION", null, null)));
+        when(provider.verify(MOBILE, CODE)).thenReturn(true);
+        when(auth.generateToken()).thenReturn("registration-token");
+        when(auth.hashToken("registration-token")).thenReturn("token-hash");
+
+        var result = service.verify("+91" + MOBILE, REGISTRATION, null, CODE, IP);
+
+        assertEquals("registration-token", result.verificationToken());
+        assertNull(result.resetToken());
+        verify(state).markVerified(eq(MOBILE), eq("token-hash"), any(LocalDateTime.class));
+    }
+
+    @Test
+    void verifiedResetOtpUsesTheSharedPasswordResetToken() {
+        when(state.find(MOBILE)).thenReturn(Optional.of(pending("PASSWORD_RESET", "PATIENT", 42L)));
+        when(auth.findOtpResetAccountId("PATIENT", MOBILE)).thenReturn(42L);
+        when(provider.verify(MOBILE, CODE)).thenReturn(true);
+        var expiresAt = OffsetDateTime.now().plusMinutes(10);
+        when(auth.issueOtpResetToken("PATIENT", 42L, MOBILE))
+                .thenReturn(new AuthService.PasswordResetResult("shared-reset-token", expiresAt));
+
+        var result = service.verify(MOBILE, PASSWORD_RESET, PATIENT, CODE, IP);
+
+        assertEquals("shared-reset-token", result.resetToken());
+        assertNull(result.verificationToken());
+        assertEquals(expiresAt, result.expiresAt());
+        verify(state).endPasswordResetOtp(MOBILE);
+    }
+
+    @Test
+    void verificationForADifferentRoleDoesNotReachTheProvider() {
+        when(state.find(MOBILE)).thenReturn(Optional.of(pending("PASSWORD_RESET", "PATIENT", 42L)));
+
+        assertThrows(BadRequestException.class, () -> service.verify(MOBILE, PASSWORD_RESET, DOCTOR, CODE, IP));
+        verify(provider, never()).verify(anyString(), anyString());
+        verifyNoInteractions(auth);
+    }
+
+    @Test
+    void unknownPasswordResetAccountReceivesTheSameResponseWithoutAnSms() {
+        when(state.find(MOBILE)).thenReturn(Optional.empty());
+        when(auth.findOtpResetAccountId("PATIENT", MOBILE)).thenReturn(null);
+        var unknown = service.send(MOBILE, PASSWORD_RESET, PATIENT, IP);
+        verify(provider, never()).send(anyString(), anyInt());
+
+        when(auth.findOtpResetAccountId("PATIENT", MOBILE)).thenReturn(42L);
+        when(provider.send(MOBILE, 5)).thenReturn(true);
+        var known = service.send(MOBILE, PASSWORD_RESET, PATIENT, IP);
+        assertEquals(unknown, known);
+    }
+
+    @Test
+    void liveRegistrationOtpCannotBeReassignedToPasswordReset() {
+        when(state.find(MOBILE)).thenReturn(Optional.of(pending("REGISTRATION", null, null)));
+        when(auth.findOtpResetAccountId("PATIENT", MOBILE)).thenReturn(42L);
+
+        assertThrows(ResponseStatusException.class, () -> service.send(MOBILE, PASSWORD_RESET, PATIENT, IP));
+        verify(provider, never()).send(anyString(), anyInt());
+    }
+
+    private OtpStateRepository.State pending(String purpose, String role, Long accountId) {
+        LocalDateTime now = LocalDateTime.now();
+        return new OtpStateRepository.State(purpose, role, accountId, now.plusMinutes(5), now, 0, true);
+    }
+}
